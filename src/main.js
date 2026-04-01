@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   puestoSelect.addEventListener('change', togglePuestoOtro);
   form.addEventListener('submit', handleSubmit);
   initStepper();
+  initBlurValidation();
 });
 
 // =====================
@@ -312,6 +313,55 @@ function showConfirmation(nombre, telefono) {
   formView.classList.add('hidden');
   confirmView.classList.remove('hidden');
   window.scrollTo(0, 0);
+}
+
+// =====================
+// Blur validation (real-time feedback for required fields)
+// =====================
+
+function initBlurValidation() {
+  const nombreInput = document.getElementById('nombre');
+  const telInput = document.getElementById('telefono_e164');
+  const emailInput = document.getElementById('email');
+
+  nombreInput.addEventListener('blur', () => {
+    const val = nombreInput.value.trim();
+    const errorEl = document.getElementById('error-nombre');
+    if (!val) {
+      errorEl.textContent = 'El nombre es obligatorio';
+      nombreInput.classList.add('has-error');
+    } else {
+      errorEl.textContent = '';
+      nombreInput.classList.remove('has-error');
+    }
+  });
+
+  telInput.addEventListener('blur', () => {
+    const val = telInput.value.trim();
+    const errorEl = document.getElementById('error-telefono_e164');
+    if (!val) {
+      errorEl.textContent = 'El teléfono es obligatorio';
+      telInput.classList.add('has-error');
+    } else if (!/^(\+?52\d{10}|\+?521\d{10}|\d{10})$/.test(val.replace(/[\s\-()]/g, ''))) {
+      errorEl.textContent = 'Ingresa un número de 10 dígitos';
+      telInput.classList.add('has-error');
+    } else {
+      errorEl.textContent = '';
+      telInput.classList.remove('has-error');
+    }
+  });
+
+  emailInput.addEventListener('blur', () => {
+    const val = emailInput.value.trim();
+    const errorEl = document.getElementById('error-email');
+    if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      errorEl.textContent = 'Ingresa un email válido';
+      emailInput.classList.add('has-error');
+    } else {
+      errorEl.textContent = '';
+      emailInput.classList.remove('has-error');
+    }
+  });
 }
 
 // =====================

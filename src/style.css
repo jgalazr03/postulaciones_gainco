@@ -157,7 +157,7 @@
   appearance: none;
 }
 .input-filled::placeholder {
-  color: var(--color-outline);
+  color: var(--color-on-surface-variant);
 }
 .input-filled:focus {
   border-bottom-color: var(--color-brand-blue);
@@ -367,7 +367,7 @@
   font-size: 0.6875rem;
   font-weight: 600;
   flex-shrink: 0;
-  transition: all 200ms;
+  pointer-events: none;
 }
 .stepper-step.is-active {
   background: var(--color-brand-blue);
@@ -383,7 +383,6 @@
   flex: 1;
   height: 2px;
   background: var(--color-outline-variant);
-  transition: background 200ms;
 }
 .stepper-line.is-done {
   background: var(--color-brand-blue);
@@ -435,7 +434,7 @@
    =========================== */
 .field-error {
   min-height: 0;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-error);
   margin-top: 0.25rem;
   padding-left: 0.875rem;
