@@ -344,49 +344,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ===========================
-   Stepper (Material horizontal)
-   =========================== */
-.stepper {
-  box-shadow: none;
-  transition: box-shadow 200ms;
-}
-.stepper.is-stuck {
-  box-shadow: 0 2px 8px -2px rgba(0,0,0,.1);
-}
-.stepper-step {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  border-radius: 9999px;
-  border: 2px solid var(--color-outline-variant);
-  background: var(--color-surface);
-  color: var(--color-outline);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  flex-shrink: 0;
-  pointer-events: none;
-}
-.stepper-step.is-active {
-  background: var(--color-brand-blue);
-  border-color: var(--color-brand-blue);
-  color: #fff;
-}
-.stepper-step.is-done {
-  background: var(--color-brand-blue);
-  border-color: var(--color-brand-blue);
-  color: #fff;
-}
-.stepper-line {
-  flex: 1;
-  height: 2px;
-  background: var(--color-outline-variant);
-}
-.stepper-line.is-done {
-  background: var(--color-brand-blue);
-}
 
 /* ===========================
    Confirmation animations

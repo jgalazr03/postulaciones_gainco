@@ -21,19 +21,11 @@ const confirmView = document.getElementById('confirm-view');
 const puestoSelect = document.getElementById('puesto_interes');
 const puestoOtroWrapper = document.getElementById('puesto-otro-wrapper');
 
-// --- Stepper refs (initialized in DOMContentLoaded) ---
-let stepperSteps, stepperLines, sectionCards;
-
 // --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
-  stepperSteps = document.querySelectorAll('.stepper-step');
-  stepperLines = document.querySelectorAll('.stepper-line');
-  sectionCards = document.querySelectorAll('#postulacion-form .section-card');
-
   loadCatalogs();
   puestoSelect.addEventListener('change', togglePuestoOtro);
   form.addEventListener('submit', handleSubmit);
-  initStepper();
   initBlurValidation();
 });
 
@@ -364,56 +356,3 @@ function initBlurValidation() {
   });
 }
 
-// =====================
-// Stepper (focus + input based)
-// =====================
-
-function initStepper() {
-  if (!sectionCards.length || !stepperSteps.length) return;
-
-  const stepperNav = document.querySelector('.stepper');
-  let currentStep = 0;
-
-  function sectionHasData(card) {
-    for (const el of card.querySelectorAll('input, select, textarea')) {
-      if (el.type === 'checkbox' || el.type === 'radio') {
-        if (el.checked) return true;
-      } else if (el.value.trim()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function updateStepperUI() {
-    stepperSteps.forEach((step, i) => {
-      const hasFill = sectionHasData(sectionCards[i]);
-      step.classList.toggle('is-active', i === currentStep);
-      step.classList.toggle('is-done', i !== currentStep && hasFill);
-    });
-    stepperLines.forEach((line, i) => {
-      line.classList.toggle('is-done', sectionHasData(sectionCards[i]));
-    });
-  }
-
-  // Update active step on focus
-  sectionCards.forEach((card, i) => {
-    card.addEventListener('focusin', () => {
-      if (i !== currentStep) {
-        currentStep = i;
-        updateStepperUI();
-      }
-    });
-  });
-
-  // Re-evaluate done state on any input change
-  form.addEventListener('input', updateStepperUI);
-  form.addEventListener('change', updateStepperUI);
-
-  // Sticky shadow
-  if (stepperNav) {
-    window.addEventListener('scroll', () => {
-      stepperNav.classList.toggle('is-stuck', stepperNav.getBoundingClientRect().top <= 0);
-    }, { passive: true });
-  }
-}
