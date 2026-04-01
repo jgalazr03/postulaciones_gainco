@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Postúlate en GAINCO</title>
+
+  <!-- OG tags para WhatsApp / Facebook -->
+  <meta property="og:title" content="Trabaja con Gainco — Postúlate aquí" />
+  <meta property="og:description" content="Vacantes para soldadores, mecánicos, paileros y más en Monterrey, Saltillo y Monclova." />
+  <meta property="og:image" content="/og-image.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_MX" />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body class="bg-bg min-h-screen font-sans text-on-surface">
+
+  <div id="app">
+
+    <!-- ========== VISTA 1: FORMULARIO ========== -->
+    <div id="form-view">
+
+      <!-- Header — Google-style -->
+      <header class="g-header">
+        <div class="g-header-accent" aria-hidden="true"></div>
+        <div class="g-header-content">
+          <img src="/logo-gainco-color.svg" alt="GAINCO" class="g-header-logo" />
+          <h1 class="g-header-title">Postúlate con nosotros</h1>
+          <p class="g-header-subtitle">Encuentra tu próxima oportunidad laboral</p>
+          <div class="g-location-chips" role="list" aria-label="Ubicaciones disponibles">
+            <span class="g-chip" role="listitem">
+              <svg class="g-chip-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              Monterrey
+            </span>
+            <span class="g-chip" role="listitem">
+              <svg class="g-chip-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              Saltillo
+            </span>
+            <span class="g-chip" role="listitem">
+              <svg class="g-chip-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              Monclova
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Stepper (sticky) -->
+      <nav class="stepper sticky top-0 z-10 bg-surface border-t border-b border-outline-variant" aria-label="Progreso del formulario">
+        <div class="max-w-xs mx-auto flex items-center justify-between px-6 py-2.5">
+          <span class="stepper-step is-active">1</span>
+          <span class="stepper-line"></span>
+          <span class="stepper-step">2</span>
+          <span class="stepper-line"></span>
+          <span class="stepper-step">3</span>
+          <span class="stepper-line"></span>
+          <span class="stepper-step">4</span>
+          <span class="stepper-line"></span>
+          <span class="stepper-step">5</span>
+        </div>
+      </nav>
+
+      <main class="max-w-lg mx-auto px-3 pt-4 pb-8">
+
+        <!-- Error global (snackbar) -->
+        <div id="global-error" class="hidden snackbar mb-4">
+          <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <span id="global-error-text"></span>
+        </div>
+
+        <form id="postulacion-form" novalidate>
+
+          <!-- ===== SECCIÓN 1: Datos personales ===== -->
+          <div class="section-card">
+            <div class="flex items-center gap-2.5 mb-4">
+              <span class="step-number">1</span>
+              <h2 class="text-base font-semibold text-on-surface">Datos personales</h2>
+            </div>
+
+            <div class="space-y-3.5">
+              <div>
+                <label for="nombre" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Nombre <span class="text-error">*</span></label>
+                <input type="text" id="nombre" name="nombre" required autocomplete="given-name" maxlength="200"
+                  class="input-filled" />
+                <p id="error-nombre" class="field-error"></p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label for="apellido_paterno" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Apellido paterno</label>
+                  <input type="text" id="apellido_paterno" name="apellido_paterno" autocomplete="family-name" maxlength="200"
+                    class="input-filled" />
+                  <p id="error-apellido_paterno" class="field-error"></p>
+                </div>
+                <div>
+                  <label for="apellido_materno" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Apellido materno</label>
+                  <input type="text" id="apellido_materno" name="apellido_materno" maxlength="200"
+                    class="input-filled" />
+                  <p id="error-apellido_materno" class="field-error"></p>
+                </div>
+              </div>
+
+              <div>
+                <label for="telefono_e164" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Teléfono (WhatsApp) <span class="text-error">*</span></label>
+                <input type="tel" id="telefono_e164" name="telefono_e164" required inputmode="numeric" autocomplete="tel"
+                  placeholder="Ej: 8112345678"
+                  class="input-filled" />
+                <p id="error-telefono_e164" class="field-error"></p>
+              </div>
+
+              <div>
+                <label for="email" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Email</label>
+                <input type="email" id="email" name="email" autocomplete="email" maxlength="300"
+                  placeholder="Opcional"
+                  class="input-filled" />
+                <p id="error-email" class="field-error"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SECCIÓN 2: Ubicación ===== -->
+          <div class="section-card">
+            <div class="flex items-center gap-2.5 mb-4">
+              <span class="step-number">2</span>
+              <h2 class="text-base font-semibold text-on-surface">Ubicación</h2>
+            </div>
+
+            <div class="space-y-3.5">
+              <div>
+                <label for="municipio" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Municipio donde vives</label>
+                <input type="text" id="municipio" name="municipio" maxlength="100" placeholder="Ej: Apodaca"
+                  class="input-filled" />
+                <p id="error-municipio" class="field-error"></p>
+              </div>
+
+              <div>
+                <label for="ciudad_interes" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Ciudad donde quieres trabajar</label>
+                <select id="ciudad_interes" name="ciudad_interes" class="select-filled">
+                  <option value="">Selecciona...</option>
+                </select>
+                <p id="error-ciudad_interes" class="field-error"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SECCIÓN 3: Interés laboral ===== -->
+          <div class="section-card">
+            <div class="flex items-center gap-2.5 mb-4">
+              <span class="step-number">3</span>
+              <h2 class="text-base font-semibold text-on-surface">Interés laboral</h2>
+            </div>
+
+            <div class="space-y-3.5">
+              <div>
+                <label for="puesto_interes" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Puesto de interés</label>
+                <select id="puesto_interes" name="puesto_interes" class="select-filled">
+                  <option value="">Selecciona...</option>
+                </select>
+                <p id="error-puesto_interes" class="field-error"></p>
+              </div>
+
+              <div id="puesto-otro-wrapper" class="hidden">
+                <label for="puesto_interes_otro" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Especifica el puesto</label>
+                <input type="text" id="puesto_interes_otro" name="puesto_interes_otro" maxlength="200"
+                  class="input-filled" />
+                <p id="error-puesto_interes_otro" class="field-error"></p>
+              </div>
+
+              <div>
+                <label for="experiencia_anios" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">Experiencia en el puesto</label>
+                <select id="experiencia_anios" name="experiencia_anios" class="select-filled">
+                  <option value="">Selecciona...</option>
+                  <option value="sin_experiencia">Sin experiencia</option>
+                  <option value="menos_1">Menos de 1 año</option>
+                  <option value="1_3">1 a 3 años</option>
+                  <option value="3_mas">Más de 3 años</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SECCIÓN 4: Disponibilidad ===== -->
+          <div class="section-card">
+            <div class="flex items-center gap-2.5 mb-4">
+              <span class="step-number">4</span>
+              <h2 class="text-base font-semibold text-on-surface">Disponibilidad</h2>
+            </div>
+
+            <div class="space-y-3.5">
+              <div>
+                <p class="text-xs font-medium text-on-surface-variant mb-2 pl-1">Turno disponible</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="chip-toggle">
+                    <input type="checkbox" name="turno" value="1er_turno" />
+                    <span class="chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="text-sm">Mañana</span>
+                  </label>
+                  <label class="chip-toggle">
+                    <input type="checkbox" name="turno" value="2do_turno" />
+                    <span class="chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="text-sm">Tarde</span>
+                  </label>
+                  <label class="chip-toggle">
+                    <input type="checkbox" name="turno" value="3er_turno" />
+                    <span class="chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="text-sm">Noche</span>
+                  </label>
+                  <label class="chip-toggle">
+                    <input type="checkbox" name="turno" value="rolado" />
+                    <span class="chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="text-sm">Rolado</span>
+                  </label>
+                  <label class="chip-toggle">
+                    <input type="checkbox" name="turno" value="fin_de_semana" />
+                    <span class="chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="text-sm">Fin de semana</span>
+                  </label>
+                  <label class="chip-toggle">
+                    <input type="checkbox" name="turno" value="cualquiera" />
+                    <span class="chip-icon">
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <span class="text-sm">Cualquiera</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label for="disponibilidad_inicio" class="block text-xs font-medium text-on-surface-variant mb-1 pl-1">¿Cuándo puedes iniciar?</label>
+                <select id="disponibilidad_inicio" name="disponibilidad_inicio" class="select-filled">
+                  <option value="">Selecciona...</option>
+                  <option value="inmediata">De inmediato</option>
+                  <option value="1_semana">En 1 semana</option>
+                  <option value="2_semanas">En 2 semanas</option>
+                  <option value="1_mes">En 1 mes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== SECCIÓN 5: Experiencia previa ===== -->
+          <div class="section-card">
+            <div class="flex items-center gap-2.5 mb-1">
+              <span class="step-number">5</span>
+              <h2 class="text-base font-semibold text-on-surface">Experiencia previa</h2>
+            </div>
+            <p class="text-xs text-on-surface-variant mb-3 pl-10">Opcional — ¿Has trabajado en alguna de estas empresas?</p>
+            <div id="clientes-list" class="space-y-2.5">
+              <!-- Se llena dinámicamente desde /api/public/catalogo/clientes -->
+            </div>
+          </div>
+
+          <!-- Honeypot anti-spam -->
+          <div class="honeypot" aria-hidden="true">
+            <label for="website">No llenes este campo</label>
+            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <!-- Botón submit -->
+          <div class="px-1 mt-2 mb-2">
+            <button type="submit" id="btn-submit" class="btn-filled">
+              <span id="btn-submit-text">Enviar postulación</span>
+            </button>
+          </div>
+
+        </form>
+
+        <p class="text-center text-xs text-on-surface-variant mt-4 pb-4">
+          Al enviar, aceptas que Gainco use tus datos para el proceso de selección.
+        </p>
+      </main>
+    </div>
+
+    <!-- ========== VISTA 2: CONFIRMACIÓN ========== -->
+    <div id="confirm-view" class="hidden">
+
+      <div class="h-1 bg-brand-red" aria-hidden="true"></div>
+      <header class="bg-surface px-4 pt-5 pb-4 border-b border-outline-variant">
+        <img src="/logo-gainco-color.svg" alt="GAINCO" class="h-7 mx-auto" />
+      </header>
+
+      <main class="max-w-lg mx-auto px-4 py-10 fade-in">
+
+        <!-- Checkmark animado -->
+        <div class="w-20 h-20 rounded-full bg-success-container flex items-center justify-center mx-auto mb-6 check-circle">
+          <svg class="w-10 h-10 text-success check-draw" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+
+        <h2 class="text-2xl font-bold text-on-surface text-center mb-2">
+          ¡Gracias, <span id="confirm-nombre"></span>!
+        </h2>
+
+        <p class="text-on-surface-variant text-center mb-8 leading-relaxed">
+          Tu postulación fue recibida. Nuestro equipo la revisará
+          y te contactaremos por WhatsApp al <strong id="confirm-telefono" class="text-on-surface"></strong>.
+        </p>
+
+        <div class="section-card">
+          <div class="flex items-center gap-2.5 mb-3">
+            <svg class="w-5 h-5 text-brand-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V19.5a2.25 2.25 0 002.25 2.25h.75" />
+            </svg>
+            <p class="font-semibold text-on-surface">Ten a la mano:</p>
+          </div>
+          <ul class="space-y-2.5 pl-1">
+            <li class="flex items-center gap-2.5 text-sm text-on-surface-variant">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0"></span>
+              Solicitud elaborada
+            </li>
+            <li class="flex items-center gap-2.5 text-sm text-on-surface-variant">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0"></span>
+              INE ambos lados
+            </li>
+            <li class="flex items-center gap-2.5 text-sm text-on-surface-variant">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0"></span>
+              Número de Seguro Social
+            </li>
+            <li class="flex items-center gap-2.5 text-sm text-on-surface-variant">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0"></span>
+              CURP
+            </li>
+            <li class="flex items-center gap-2.5 text-sm text-on-surface-variant">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0"></span>
+              Acta de nacimiento
+            </li>
+            <li class="flex items-center gap-2.5 text-sm text-on-surface-variant">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0"></span>
+              Comprobante de domicilio
+            </li>
+            <li class="flex items-center gap-2.5 text-sm text-on-surface-variant">
+              <span class="w-1.5 h-1.5 rounded-full bg-brand-blue shrink-0"></span>
+              RFC
+            </li>
+          </ul>
+        </div>
+      </main>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
