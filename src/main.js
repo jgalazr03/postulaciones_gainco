@@ -10,6 +10,9 @@ const utmData = {
   utm_campaign: params.get('utm_campaign') || null,
 };
 
+// --- State ---
+let selectedVacanteId = null;
+
 // --- DOM refs ---
 const form = document.getElementById('postulacion-form');
 const btnSubmit = document.getElementById('btn-submit');
@@ -23,36 +26,57 @@ const puestoOtroWrapper = document.getElementById('puesto-otro-wrapper');
 
 // --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
-  loadCatalogs();
+  loadData();
   puestoSelect.addEventListener('change', togglePuestoOtro);
   form.addEventListener('submit', handleSubmit);
   initBlurValidation();
+
+  document.getElementById('btn-skip-vacante').addEventListener('click', () => {
+    document.querySelectorAll('.vacante-card.is-selected').forEach(c => c.classList.remove('is-selected'));
+    selectedVacanteId = null;
+    document.getElementById('btn-skip-vacante').classList.add('hidden');
+  });
 });
 
 // =====================
-// Catalog loading
+// Data loading
 // =====================
 
-async function loadCatalogs() {
+async function loadData() {
   try {
-    const [clientesRes, categoriasRes, ciudadesRes] = await Promise.all([
+    const [vacantesRes, clientesRes] = await Promise.all([
+      fetchJSON('/api/public/vacantes'),
       fetchJSON('/api/public/catalogo/clientes'),
-      fetchJSON('/api/public/catalogo/categorias'),
-      fetchJSON('/api/public/catalogo/ciudades'),
     ]);
 
-    if (categoriasRes?.ok) {
-      populateSelect('puesto_interes', categoriasRes.data.categorias, true);
+    // Build vacancy cards if there are open positions
+    if (vacantesRes?.ok && vacantesRes.data.vacantes.length > 0) {
+      buildVacanteCards(vacantesRes.data.vacantes);
+      document.getElementById('vacantes-section').classList.remove('hidden');
     }
-    if (ciudadesRes?.ok) {
-      populateSelect('ciudad_interes', ciudadesRes.data.ciudades);
+
+    // Populate dropdowns from vacantes filtros, fallback to individual catalogs
+    let ciudades = vacantesRes?.ok ? vacantesRes.data.filtros.ciudades : [];
+    let categorias = vacantesRes?.ok ? vacantesRes.data.filtros.categorias : [];
+
+    if (!ciudades.length) {
+      const ciudadesRes = await fetchJSON('/api/public/catalogo/ciudades');
+      ciudades = ciudadesRes?.ok ? ciudadesRes.data.ciudades : [];
     }
+    if (!categorias.length) {
+      const categoriasRes = await fetchJSON('/api/public/catalogo/categorias');
+      categorias = categoriasRes?.ok ? categoriasRes.data.categorias : [];
+    }
+
+    populateSelect('ciudad_interes', ciudades);
+    populateSelect('puesto_interes', categorias, true);
+
+    // Clients for "experiencia previa" section
     if (clientesRes?.ok) {
-      const soloNemak = clientesRes.data.clientes.filter(c => c.nombre.toUpperCase() === 'NEMAK');
-      buildClienteCheckboxes(soloNemak);
+      buildClienteCheckboxes(clientesRes.data.clientes);
     }
   } catch (err) {
-    console.error('Error cargando catálogos:', err);
+    console.error('Error cargando datos:', err);
   }
 }
 
@@ -82,6 +106,52 @@ function populateSelect(selectId, items, addOtro = false) {
     opt.value = '__otro__';
     opt.textContent = 'Otro';
     select.appendChild(opt);
+  }
+}
+
+// =====================
+// Vacante cards
+// =====================
+
+function buildVacanteCards(vacantes) {
+  const container = document.getElementById('vacantes-list');
+  container.innerHTML = '';
+
+  vacantes.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'vacante-card';
+    card.dataset.vacanteId = v.id;
+
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <p class="text-sm font-semibold text-on-surface">${escapeHtml(v.titulo)}</p>
+          <p class="text-xs text-on-surface-variant mt-0.5">${escapeHtml(v.cliente_nombre)} · ${escapeHtml(v.ciudad)}</p>
+        </div>
+        <span class="vacante-badge">${v.posiciones_disponibles} ${v.posiciones_disponibles === 1 ? 'lugar' : 'lugares'}</span>
+      </div>
+      ${v.descripcion_publica ? `<p class="text-xs text-on-surface-variant mt-1.5 line-clamp-2">${escapeHtml(v.descripcion_publica)}</p>` : ''}
+    `;
+
+    card.addEventListener('click', () => selectVacante(card, v));
+    container.appendChild(card);
+  });
+}
+
+function selectVacante(card, vacante) {
+  document.querySelectorAll('.vacante-card.is-selected').forEach(c => c.classList.remove('is-selected'));
+  card.classList.add('is-selected');
+  selectedVacanteId = vacante.id;
+
+  // Show skip button
+  document.getElementById('btn-skip-vacante').classList.remove('hidden');
+
+  // Pre-fill dropdowns
+  const ciudadSelect = document.getElementById('ciudad_interes');
+  if (vacante.ciudad) ciudadSelect.value = vacante.ciudad;
+  if (vacante.categoria) {
+    puestoSelect.value = vacante.categoria;
+    togglePuestoOtro();
   }
 }
 
@@ -172,6 +242,7 @@ function collectFormData() {
     experiencia_anios: val('experiencia_anios') || null,
     disponibilidad_turno: collectTurnos(),
     disponibilidad_inicio: val('disponibilidad_inicio') || null,
+    vacante_id: selectedVacanteId || null,
     experiencia_clientes: collectExperienciaClientes(),
     ...utmData,
     website: document.getElementById('website').value,

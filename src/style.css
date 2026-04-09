@@ -253,6 +253,40 @@
 }
 
 /* ===========================
+   Vacante card (selección)
+   =========================== */
+.vacante-card {
+  border: 1.5px solid var(--color-outline-variant);
+  border-radius: 0.75rem;
+  padding: 0.875rem;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all 200ms;
+  -webkit-tap-highlight-color: transparent;
+}
+.vacante-card:active {
+  transform: scale(0.98);
+}
+.vacante-card.is-selected {
+  border-color: var(--color-brand-blue);
+  background: color-mix(in srgb, var(--color-brand-blue) 6%, white);
+  box-shadow: 0 0 0 1px var(--color-brand-blue);
+}
+
+.vacante-badge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-success);
+  background: var(--color-success-container);
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+
+/* ===========================
    Cliente card (experiencia)
    =========================== */
 .cliente-card {

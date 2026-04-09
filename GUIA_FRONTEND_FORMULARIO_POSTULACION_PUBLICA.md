@@ -33,14 +33,62 @@ Todos los endpoints del formulario son publicos. No requieren token.
 
 | Metodo | Ruta | Descripcion |
 |--------|------|-------------|
-| GET | `/api/public/catalogo/clientes` | Lista de empresas para la pregunta de experiencia |
-| GET | `/api/public/catalogo/categorias` | Lista de puestos para el dropdown |
-| GET | `/api/public/catalogo/ciudades` | Lista de ciudades para el dropdown |
+| GET | `/api/public/vacantes` | Vacantes abiertas + filtros derivados (nuevo) |
+| GET | `/api/public/catalogo/clientes` | Lista de empresas (filtrado por vacantes si existen) |
+| GET | `/api/public/catalogo/categorias` | Lista de puestos (filtrado por vacantes si existen) |
+| GET | `/api/public/catalogo/ciudades` | Lista de ciudades (filtrado por vacantes si existen) |
 | POST | `/api/public/postulaciones` | Enviar la postulacion |
 
-### 2.1 GET /api/public/catalogo/clientes
+### 2.1 GET /api/public/vacantes (NUEVO)
+
+Retorna vacantes abiertas con campos publicos + filtros derivados de las vacantes existentes.
+
+**Query params opcionales:** `?ciudad=Monterrey&categoria=Soldador&cliente_id=uuid`
+
+**Response:**
+```json
+{
+  "ok": true,
+  "data": {
+    "vacantes": [
+      {
+        "id": "uuid-vacante-1",
+        "categoria": "Soldador",
+        "titulo": "Soldador 6G con experiencia",
+        "ciudad": "Monterrey",
+        "cliente_id": "uuid-nemak",
+        "descripcion_publica": "Buscamos soldadores con experiencia en proceso 6G para planta NEMAK.",
+        "cantidad": 5,
+        "posiciones_cubiertas": 2,
+        "posiciones_disponibles": 3,
+        "cliente_nombre": "NEMAK"
+      }
+    ],
+    "filtros": {
+      "ciudades": ["Monterrey", "Saltillo"],
+      "categorias": ["Soldador", "Pailero"],
+      "clientes": [
+        { "id": "uuid-nemak", "nombre": "NEMAK" }
+      ]
+    }
+  }
+}
+```
+
+**Flujo recomendado:**
+1. Al cargar la pagina, llamar `GET /api/public/vacantes` (sin filtros)
+2. Usar `data.filtros` para poblar los dropdowns de ciudad, categoria y cliente
+3. Mostrar las vacantes como cards: puesto + cliente + ciudad + descripcion breve
+4. Cuando el usuario selecciona un filtro, llamar de nuevo con el query param correspondiente
+5. Si no hay vacantes abiertas, `data.filtros` estara vacio — en ese caso usar los 3 catalogos como fallback
+
+**Logica de fallback:** Si `filtros.ciudades` esta vacio, llamar `GET /api/public/catalogo/ciudades` para obtener la lista completa. Lo mismo para categorias y clientes.
+
+### 2.2 GET /api/public/catalogo/clientes
 
 Retorna los clientes activos (solo id y nombre, sin datos internos).
+Acepta query param opcional `?ciudad=Monterrey` para filtrar por ciudad.
+**Si hay vacantes abiertas, solo retorna clientes con vacantes.** Si no hay, retorna todos los activos.
 
 **Response:**
 ```json
@@ -58,9 +106,10 @@ Retorna los clientes activos (solo id y nombre, sin datos internos).
 
 Usar para construir la seccion "Has trabajado en alguna de estas empresas?".
 
-### 2.2 GET /api/public/catalogo/categorias
+### 2.3 GET /api/public/catalogo/categorias
 
 Retorna la lista de categorias de puesto.
+**Si hay vacantes abiertas, solo retorna categorias con vacantes.** Si no hay, retorna la lista completa.
 
 **Response:**
 ```json
@@ -84,7 +133,9 @@ Retorna la lista de categorias de puesto.
 }
 ```
 
-### 2.3 GET /api/public/catalogo/ciudades
+### 2.4 GET /api/public/catalogo/ciudades
+
+**Si hay vacantes abiertas, solo retorna ciudades con vacantes.** Si no hay, retorna la lista completa.
 
 **Response:**
 ```json
@@ -122,6 +173,7 @@ Retorna la lista de categorias de puesto.
 | `fuente` | string | No | Valor de `utm_source` de la URL (max 100) |
 | `utm_medium` | string | No | Valor de `utm_medium` de la URL (max 100) |
 | `utm_campaign` | string | No | Valor de `utm_campaign` de la URL (max 200) |
+| `vacante_id` | string (UUID) | No | ID de la vacante seleccionada. Si el usuario elige una card de vacante, enviar su `id`. Si no, omitir |
 | `website` | string | No | **HONEYPOT** — debe enviarse siempre como `""` (ver seccion 7) |
 
 ### Ejemplo request completo
@@ -138,6 +190,7 @@ const response = await fetch('https://api.ejemplo.com/api/public/postulaciones',
     municipio: 'Apodaca',
     ciudad_interes: 'Monterrey',
     puesto_interes: 'Soldador',
+    vacante_id: 'uuid-vacante-1',  // opcional — si eligio una card de vacante
     experiencia_anios: '1_3',
     disponibilidad_turno: ['1er_turno', '2do_turno'],
     disponibilidad_inicio: 'inmediata',
@@ -344,6 +397,12 @@ Si se excede: HTTP 429 con body:
 ```
 === POSTULATE ===
 
+Seccion 0: Vacantes disponibles (NUEVO)
+  - Cards de vacantes abiertas (si existen)
+  - Cada card: puesto + cliente + ciudad + descripcion breve
+  - Al seleccionar una card, se pre-llenan ciudad_interes y puesto_interes
+  - Opcion "No veo mi puesto — postularme sin vacante especifica"
+
 Seccion 1: Datos personales
   - Nombre *
   - Apellido paterno
@@ -353,19 +412,19 @@ Seccion 1: Datos personales
 
 Seccion 2: Ubicacion
   - Municipio donde vives
-  - Ciudad donde quieres trabajar  [dropdown]
+  - Ciudad donde quieres trabajar  [dropdown, pre-llenado si eligio vacante]
 
 Seccion 3: Interes laboral
-  - Puesto de interes  [dropdown + opcion "Otro"]
+  - Puesto de interes  [dropdown + opcion "Otro", pre-llenado si eligio vacante]
   - Experiencia en el puesto  [dropdown]
 
 Seccion 4: Disponibilidad
   - Turno disponible  [checkboxes, seleccion multiple]
   - Cuando puedes iniciar  [dropdown]
 
-Seccion 5: Experiencia previa (opcional)
-  - Has trabajado en alguna de estas empresas?  [checkboxes]
-    - Por cada una: Directamente o por empresa externa?  [radio]
+Seccion 5: Experiencia previa en NEMAK (opcional)
+  - Has trabajado en NEMAK?  [checkbox]
+    - Fue: Directamente o por empresa externa?  [radio]
 
 [ENVIAR POSTULACION]
 ```
@@ -428,7 +487,10 @@ Mientras tanto, para desarrollo local, se puede usar `localhost:5173` o `localho
 
 ## 11. Checklist de implementacion
 
-- [ ] Cargar catalogos al montar (`clientes`, `categorias`, `ciudades`)
+- [ ] Cargar vacantes al montar (`GET /api/public/vacantes`), usar filtros derivados para dropdowns
+- [ ] Fallback a catalogos individuales si no hay vacantes abiertas
+- [ ] Mostrar cards de vacantes con puesto, cliente, ciudad y descripcion
+- [ ] Enviar `vacante_id` en el body si el usuario selecciono una card de vacante
 - [ ] Capturar UTM params de la URL al cargar
 - [ ] Implementar campo honeypot oculto con CSS
 - [ ] Validar telefono en frontend (10 digitos minimo)
