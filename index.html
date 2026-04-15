@@ -63,7 +63,7 @@
           </div>
 
           <!-- ===== SECCIÓN 1: Datos personales ===== -->
-          <div class="section-card">
+          <div id="section-datos-personales" class="section-card">
             <div class="flex items-center gap-2.5 mb-4">
               <span class="step-number">1</span>
               <h2 class="text-base font-semibold text-on-surface">Datos personales</h2>
@@ -273,6 +273,42 @@
       </main>
     </div>
 
+    <!-- ========== TOAST (feedback breve) ========== -->
+    <div id="toast" class="toast" role="status" aria-live="polite">
+      <svg id="toast-icon" class="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+      <div class="toast-content">
+        <p id="toast-title" class="text-sm font-semibold leading-snug"></p>
+        <p id="toast-subtitle" class="text-xs leading-snug mt-0.5 opacity-90"></p>
+      </div>
+    </div>
+
+    <!-- ========== BOTTOM-SHEET: DETALLE DE VACANTE ========== -->
+    <div id="vacante-sheet-backdrop" class="sheet-backdrop" aria-hidden="true"></div>
+    <div id="vacante-sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-titulo" aria-hidden="true">
+      <button type="button" id="sheet-close" class="sheet-close" aria-label="Cerrar detalle">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <h2 id="sheet-titulo" class="text-lg font-semibold text-on-surface leading-snug"></h2>
+        <p id="sheet-subtitulo" class="text-sm text-on-surface-variant mt-1"></p>
+        <div class="sheet-chips mt-2.5">
+          <span id="sheet-badge" class="vacante-badge"></span>
+        </div>
+      </div>
+      <div class="sheet-body">
+        <h3 class="sheet-section-title">Detalles del puesto</h3>
+        <p id="sheet-descripcion" class="text-sm text-on-surface leading-relaxed whitespace-pre-wrap"></p>
+      </div>
+      <div class="sheet-footer">
+        <button type="button" id="sheet-confirm" class="btn-filled"></button>
+      </div>
+    </div>
+
     <!-- ========== VISTA 2: CONFIRMACIÓN ========== -->
     <div id="confirm-view" class="hidden">
 
@@ -294,10 +330,49 @@
           ¡Gracias, <span id="confirm-nombre"></span>!
         </h2>
 
-        <p class="text-on-surface-variant text-center mb-8 leading-relaxed">
-          Tu postulación fue recibida. Nuestro equipo la revisará
-          y te contactaremos por WhatsApp al <strong id="confirm-telefono" class="text-on-surface"></strong>.
+        <p class="text-on-surface text-center mb-6 leading-relaxed">
+          Tu postulación fue recibida.
         </p>
+
+        <div id="confirm-vacante" class="hidden section-card mb-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-1.5">Te postulaste a</p>
+          <p id="confirm-vacante-titulo" class="text-base font-semibold text-on-surface"></p>
+          <p id="confirm-vacante-sub" class="text-sm text-on-surface-variant mt-0.5"></p>
+        </div>
+
+        <div id="confirm-folio" class="hidden folio-card mb-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-on-surface-variant mb-1">Tu folio de postulación</p>
+          <p id="confirm-folio-value" class="text-xl font-bold text-brand-blue tracking-wider"></p>
+          <p class="text-xs text-on-surface-variant mt-1">Guárdalo para dar seguimiento</p>
+        </div>
+
+        <div class="section-card mb-4">
+          <div class="flex items-start gap-2.5">
+            <svg class="w-5 h-5 text-brand-blue shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+            </svg>
+            <div>
+              <p class="text-sm font-semibold text-on-surface mb-0.5">Te escribiremos por WhatsApp</p>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Al número <strong id="confirm-telefono" class="text-on-surface"></strong> en <strong class="text-on-surface">1 a 3 días hábiles</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div id="confirm-fallback" class="hidden section-card mb-6">
+          <div class="flex items-start gap-2.5">
+            <svg class="w-5 h-5 text-brand-red shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            <div>
+              <p class="text-sm font-semibold text-on-surface mb-0.5">¿No recibiste respuesta en 3 días?</p>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Escríbenos a <a id="confirm-contact-link" href="#" class="text-brand-blue font-semibold underline">nuestro WhatsApp de contacto</a>.
+              </p>
+            </div>
+          </div>
+        </div>
 
         <div class="section-card">
           <div class="flex items-center gap-2.5 mb-3">

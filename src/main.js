@@ -1,6 +1,7 @@
 import { validateForm } from './validation.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
+const CONTACT_WHATSAPP = import.meta.env.VITE_CONTACT_WHATSAPP || '';
 
 // --- UTM capture ---
 const params = new URLSearchParams(window.location.search);
@@ -12,6 +13,9 @@ const utmData = {
 
 // --- State ---
 let selectedVacanteId = null;
+let pendingVacante = null;
+let sheetOpenerEl = null;
+const vacantesById = new Map();
 
 // --- DOM refs ---
 const form = document.getElementById('postulacion-form');
@@ -32,10 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initBlurValidation();
 
   document.getElementById('btn-skip-vacante').addEventListener('click', () => {
-    document.querySelectorAll('.vacante-card.is-selected').forEach(c => c.classList.remove('is-selected'));
-    selectedVacanteId = null;
-    document.getElementById('btn-skip-vacante').classList.add('hidden');
+    clearVacanteSelection();
   });
+
+  initVacanteSheet();
 });
 
 // =====================
@@ -116,11 +120,16 @@ function populateSelect(selectId, items, addOtro = false) {
 function buildVacanteCards(vacantes) {
   const container = document.getElementById('vacantes-list');
   container.innerHTML = '';
+  vacantesById.clear();
 
   vacantes.forEach(v => {
-    const card = document.createElement('div');
-    card.className = 'vacante-card';
+    vacantesById.set(v.id, v);
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'vacante-card w-full text-left';
     card.dataset.vacanteId = v.id;
+    card.setAttribute('aria-label', `Ver detalle de vacante: ${v.titulo} en ${v.cliente_nombre}, ${v.ciudad}`);
 
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2">
@@ -131,28 +140,135 @@ function buildVacanteCards(vacantes) {
         <span class="vacante-badge">${v.posiciones_disponibles} ${v.posiciones_disponibles === 1 ? 'lugar' : 'lugares'}</span>
       </div>
       ${v.descripcion_publica ? `<p class="text-xs text-on-surface-variant mt-1.5 line-clamp-2">${escapeHtml(v.descripcion_publica)}</p>` : ''}
+      <p class="text-xs text-brand-blue font-medium mt-2">Ver detalle →</p>
     `;
 
-    card.addEventListener('click', () => selectVacante(card, v));
+    card.addEventListener('click', () => openVacanteDetail(v, card));
     container.appendChild(card);
   });
 }
 
-function selectVacante(card, vacante) {
+function applyVacanteSelection(vacante) {
   document.querySelectorAll('.vacante-card.is-selected').forEach(c => c.classList.remove('is-selected'));
-  card.classList.add('is-selected');
+  const card = document.querySelector(`.vacante-card[data-vacante-id="${vacante.id}"]`);
+  if (card) card.classList.add('is-selected');
   selectedVacanteId = vacante.id;
 
-  // Show skip button
   document.getElementById('btn-skip-vacante').classList.remove('hidden');
 
-  // Pre-fill dropdowns
   const ciudadSelect = document.getElementById('ciudad_interes');
   if (vacante.ciudad) ciudadSelect.value = vacante.ciudad;
   if (vacante.categoria) {
     puestoSelect.value = vacante.categoria;
     togglePuestoOtro();
   }
+}
+
+function clearVacanteSelection() {
+  document.querySelectorAll('.vacante-card.is-selected').forEach(c => c.classList.remove('is-selected'));
+  selectedVacanteId = null;
+  document.getElementById('btn-skip-vacante').classList.add('hidden');
+}
+
+// =====================
+// Vacante detail sheet
+// =====================
+
+function initVacanteSheet() {
+  const backdrop = document.getElementById('vacante-sheet-backdrop');
+  const sheet = document.getElementById('vacante-sheet');
+  const btnClose = document.getElementById('sheet-close');
+  const btnConfirm = document.getElementById('sheet-confirm');
+
+  backdrop.addEventListener('click', closeVacanteDetail);
+  btnClose.addEventListener('click', closeVacanteDetail);
+  btnConfirm.addEventListener('click', handleSheetConfirm);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sheet.classList.contains('is-open')) {
+      closeVacanteDetail();
+    }
+  });
+}
+
+function openVacanteDetail(vacante, openerEl) {
+  pendingVacante = vacante;
+  sheetOpenerEl = openerEl || document.activeElement;
+
+  document.getElementById('sheet-titulo').textContent = vacante.titulo;
+  document.getElementById('sheet-subtitulo').textContent = `${vacante.cliente_nombre} · ${vacante.ciudad}`;
+  document.getElementById('sheet-badge').textContent =
+    `${vacante.posiciones_disponibles} ${vacante.posiciones_disponibles === 1 ? 'lugar' : 'lugares'}`;
+  document.getElementById('sheet-descripcion').textContent =
+    vacante.descripcion_publica || 'Sin descripción disponible.';
+
+  const btnConfirm = document.getElementById('sheet-confirm');
+  const isAlreadySelected = selectedVacanteId === vacante.id;
+  btnConfirm.textContent = isAlreadySelected ? 'Quitar selección' : 'Elegir esta vacante';
+  btnConfirm.dataset.mode = isAlreadySelected ? 'deselect' : 'select';
+
+  document.getElementById('vacante-sheet-backdrop').classList.add('is-open');
+  const sheet = document.getElementById('vacante-sheet');
+  sheet.classList.add('is-open');
+  sheet.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('sheet-open');
+
+  requestAnimationFrame(() => document.getElementById('sheet-close').focus());
+}
+
+function closeVacanteDetail() {
+  const sheet = document.getElementById('vacante-sheet');
+  document.getElementById('vacante-sheet-backdrop').classList.remove('is-open');
+  sheet.classList.remove('is-open');
+  sheet.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('sheet-open');
+  pendingVacante = null;
+
+  if (sheetOpenerEl && typeof sheetOpenerEl.focus === 'function') {
+    sheetOpenerEl.focus();
+  }
+  sheetOpenerEl = null;
+}
+
+function handleSheetConfirm() {
+  if (!pendingVacante) return;
+  const mode = document.getElementById('sheet-confirm').dataset.mode;
+  if (mode === 'deselect') {
+    clearVacanteSelection();
+    closeVacanteDetail();
+    showToast({ title: 'Selección quitada', variant: 'default', durationMs: 3000 });
+  } else {
+    applyVacanteSelection(pendingVacante);
+    closeVacanteDetail();
+    showToast({
+      title: 'Vacante elegida',
+      subtitle: 'Ahora cuéntanos de ti',
+    });
+    setTimeout(() => {
+      const target = document.getElementById('section-datos-personales');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 320);
+  }
+}
+
+// =====================
+// Toast helper
+// =====================
+
+let toastTimer = null;
+function showToast({ title, subtitle = '', variant = 'success', durationMs = 5000 }) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-subtitle').textContent = subtitle;
+  toast.classList.remove('toast-success');
+  if (variant === 'success') toast.classList.add('toast-success');
+
+  clearTimeout(toastTimer);
+  requestAnimationFrame(() => toast.classList.add('is-open'));
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('is-open');
+  }, durationMs);
 }
 
 // =====================
@@ -294,7 +410,9 @@ async function handleSubmit(e) {
     const body = await res.json();
 
     if (res.ok && body.ok) {
-      showConfirmation(data.nombre, data.telefono_e164);
+      const folio = body.data?.folio || body.data?.id || null;
+      const vacante = selectedVacanteId ? vacantesById.get(selectedVacanteId) : null;
+      showConfirmation(data.nombre, data.telefono_e164, folio, vacante);
       return;
     }
 
@@ -370,12 +488,50 @@ function showGlobalError(message) {
 // Confirmation view
 // =====================
 
-function showConfirmation(nombre, telefono) {
+function showConfirmation(nombre, telefono, folio, vacante) {
   document.getElementById('confirm-nombre').textContent = nombre;
   document.getElementById('confirm-telefono').textContent = telefono;
+
+  const folioWrap = document.getElementById('confirm-folio');
+  if (folio) {
+    document.getElementById('confirm-folio-value').textContent = formatFolio(folio);
+    folioWrap.classList.remove('hidden');
+  } else {
+    folioWrap.classList.add('hidden');
+  }
+
+  const vacWrap = document.getElementById('confirm-vacante');
+  if (vacante) {
+    document.getElementById('confirm-vacante-titulo').textContent = vacante.titulo;
+    document.getElementById('confirm-vacante-sub').textContent =
+      `${vacante.cliente_nombre} · ${vacante.ciudad}`;
+    vacWrap.classList.remove('hidden');
+  } else {
+    vacWrap.classList.add('hidden');
+  }
+
+  const fallbackWrap = document.getElementById('confirm-fallback');
+  if (CONTACT_WHATSAPP) {
+    const digits = CONTACT_WHATSAPP.replace(/\D/g, '');
+    const link = document.getElementById('confirm-contact-link');
+    link.href = `https://wa.me/${digits}`;
+    link.textContent = CONTACT_WHATSAPP;
+    fallbackWrap.classList.remove('hidden');
+  } else {
+    fallbackWrap.classList.add('hidden');
+  }
+
   formView.classList.add('hidden');
   confirmView.classList.remove('hidden');
   window.scrollTo(0, 0);
+}
+
+function formatFolio(raw) {
+  const str = String(raw);
+  if (/^[0-9a-f-]{32,}$/i.test(str)) {
+    return str.split('-')[0].toUpperCase();
+  }
+  return str;
 }
 
 // =====================
