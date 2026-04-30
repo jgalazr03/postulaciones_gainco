@@ -137,7 +137,7 @@ function buildVacanteCards(vacantes) {
           <p class="text-sm font-semibold text-on-surface">${escapeHtml(v.titulo)}</p>
           <p class="text-xs text-on-surface-variant mt-0.5">${escapeHtml(v.cliente_nombre)} · ${escapeHtml(v.ciudad)}</p>
         </div>
-        <span class="vacante-badge">${v.posiciones_disponibles} ${v.posiciones_disponibles === 1 ? 'lugar' : 'lugares'}</span>
+        <span class="vacante-badge">Recibiendo postulaciones</span>
       </div>
       ${v.descripcion_publica ? `<p class="text-xs text-on-surface-variant mt-1.5 line-clamp-2">${escapeHtml(v.descripcion_publica)}</p>` : ''}
       <p class="text-xs text-brand-blue font-medium mt-2">Ver detalle →</p>
@@ -197,8 +197,7 @@ function openVacanteDetail(vacante, openerEl) {
 
   document.getElementById('sheet-titulo').textContent = vacante.titulo;
   document.getElementById('sheet-subtitulo').textContent = `${vacante.cliente_nombre} · ${vacante.ciudad}`;
-  document.getElementById('sheet-badge').textContent =
-    `${vacante.posiciones_disponibles} ${vacante.posiciones_disponibles === 1 ? 'lugar' : 'lugares'}`;
+  document.getElementById('sheet-badge').textContent = 'Recibiendo postulaciones';
   document.getElementById('sheet-descripcion').textContent =
     vacante.descripcion_publica || 'Sin descripción disponible.';
 
