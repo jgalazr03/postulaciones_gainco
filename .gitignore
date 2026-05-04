@@ -1,6 +1,21 @@
+# --- Build / Modules ---
 node_modules
 dist
+
+# --- Env ---
 .env
+.env.local
+.env.*.local
+
+# --- System ---
 .DS_Store
+
+# --- Playwright (legacy MCP capture dir) ---
 .playwright-mcp
+
+# --- Capturas locales de prueba ---
 *.png
+
+# --- Claude Code (local-only por máquina) ---
+.claude/settings.local.json
+.claude/.session*
