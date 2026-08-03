@@ -1,5 +1,15 @@
 import { validateForm } from './validation.js';
 
+// 🚧 PAUSA DE POSTULACIONES (2026-08-03)
+// El módulo interno de Reclutamiento (rh-worker-management-frontend) se deshabilitó,
+// así que este formulario público deja de aceptar postulaciones nuevas: al cargar la
+// página se muestra un aviso (#pausa-view) con el WhatsApp de contacto en vez del
+// formulario/vacantes, y no se llama a /api/public/vacantes ni a /api/public/postulaciones.
+// Reactivar = poner esta constante en `false` (requiere también que el backend vuelva a
+// aceptar POST /api/public/postulaciones sin el gate 503 espejo — ver
+// Suite/.agent-workspace/reclutamiento-retiro/2026-08-03-0212/plan.md).
+const POSTULACIONES_PAUSADAS = true;
+
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 const CONTACT_WHATSAPP = import.meta.env.VITE_CONTACT_WHATSAPP || '';
 
@@ -30,6 +40,11 @@ const puestoOtroWrapper = document.getElementById('puesto-otro-wrapper');
 
 // --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
+  if (POSTULACIONES_PAUSADAS) {
+    showPausaView();
+    return;
+  }
+
   loadData();
   puestoSelect.addEventListener('change', togglePuestoOtro);
   form.addEventListener('submit', handleSubmit);
@@ -41,6 +56,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initVacanteSheet();
 });
+
+// =====================
+// Pausa de postulaciones (gate)
+// =====================
+
+function showPausaView() {
+  formView.classList.add('hidden');
+  document.getElementById('pausa-view').classList.remove('hidden');
+
+  const link = document.getElementById('pausa-whatsapp-link');
+  if (CONTACT_WHATSAPP && link) {
+    const digits = CONTACT_WHATSAPP.replace(/\D/g, '');
+    link.href = `https://wa.me/${digits}`;
+    link.classList.remove('hidden');
+  }
+}
 
 // =====================
 // Data loading
