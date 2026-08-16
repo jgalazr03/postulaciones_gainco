@@ -41,10 +41,13 @@
         </p>
       </section>
 
-      <!-- ══ FORMULARIO ═══════════════════════════════════ -->
-      <section id="view-form" class="hidden">
-
-        <div id="form-intro">
+      <!-- ══ INICIO — la bifurcación ══════════════════════
+           Dos caminos explícitos en vez de aterrizar en el formulario. Antes,
+           quien ya se había registrado en ese teléfono era redirigido solo a su
+           trámite: en planta se presta el celular, y el compañero acababa
+           dentro del registro ajeno. Ahora siempre se elige. -->
+      <section id="view-inicio" class="hidden">
+        <div id="inicio-intro">
           <h1 class="headline">Apoyo de útiles escolares</h1>
           <p class="body-sm">Ciclo escolar 2026-2027</p>
         </div>
@@ -55,6 +58,30 @@
             El apoyo es un <b>crédito para comprar útiles en una papelería</b>.
             No es dinero en efectivo ni depósito.
           </p>
+        </div>
+
+        <div class="stack" id="inicio-acciones">
+          <button type="button" class="btn btn-filled" id="btn-registrarme">
+            Registrarme
+          </button>
+
+          <!-- El texto cambia si este teléfono ya tiene un registro guardado. -->
+          <button type="button" class="btn btn-outlined" id="btn-ya-registrado">
+            Ya me registré, me falta subir papeles
+          </button>
+
+          <button type="button" class="btn btn-text hidden" id="btn-otro-registro">
+            No es mi registro, buscar con folio
+          </button>
+        </div>
+      </section>
+
+      <!-- ══ FORMULARIO ═══════════════════════════════════ -->
+      <section id="view-form" class="hidden">
+
+        <div id="form-intro">
+          <h1 class="headline">Apoyo de útiles escolares</h1>
+          <p class="body-sm">Ciclo escolar 2026-2027</p>
         </div>
 
         <div class="progress">
@@ -118,11 +145,8 @@
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
             </button>
 
-            <!-- Salida para quien vuelve desde otro teléfono o perdió su link.
-                 Sin esto su única opción sería registrarse de nuevo, creando el
-                 duplicado que RH tendría que resolver a mano. -->
-            <button type="button" class="btn btn-text" id="btn-ya-registrado">
-              Ya me había registrado
+            <button type="button" class="btn btn-text" id="btn-volver-inicio">
+              Regresar
             </button>
           </form>
         </div>

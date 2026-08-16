@@ -16,6 +16,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || '';
 const PROGRAMA = 'escolar_2026_2027';
 const BORRADOR_KEY = 'gainco.apoyo-escolar.borrador';
 const TOKEN_KEY = 'gainco.apoyo-escolar.token';
+const FOLIO_KEY = 'gainco.apoyo-escolar.folio';
 
 // Compresión de fotos: un celular de gama baja saca imágenes de 6-8 MB y con
 // la red de una planta esa subida se cae. Sin esto se pierde gente real.
@@ -49,7 +50,32 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const show = (el) => el && el.classList.remove('hidden');
 const hide = (el) => el && el.classList.add('hidden');
 
-const VISTAS = ['view-loading', 'view-cerrado', 'view-form', 'view-acuse', 'view-regreso', 'view-rescate'];
+const VISTAS = [
+  'view-loading', 'view-cerrado', 'view-inicio', 'view-form',
+  'view-acuse', 'view-regreso', 'view-rescate',
+];
+
+/**
+ * Sesión local: el token del link personal y el folio, para que el botón de
+ * «ya me registré» pueda decir CUÁL registro es. El folio no es secreto (se
+ * muestra en pantalla y se dicta por teléfono); el token sí, y por eso ninguno
+ * de los dos viaja a otro lado que no sea este navegador.
+ */
+function guardarSesion(token, folio) {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+    if (folio) localStorage.setItem(FOLIO_KEY, folio);
+  } catch { /* modo privado: se pierde la comodidad, no el registro */ }
+}
+
+function leerSesion() {
+  try {
+    return {
+      token: localStorage.getItem(TOKEN_KEY),
+      folio: localStorage.getItem(FOLIO_KEY),
+    };
+  } catch { return { token: null, folio: null }; }
+}
 
 function setView(id) {
   VISTAS.forEach((v) => hide(document.getElementById(v)));
@@ -343,7 +369,7 @@ async function crearSolicitud(botón) {
 
     state.token = data.token;
     state.solicitud = data;
-    try { localStorage.setItem(TOKEN_KEY, data.token); } catch { /* noop */ }
+    guardarSesion(data.token, data.folio);
     limpiarBorrador();
 
     irAPaso(3);
@@ -580,11 +606,18 @@ function irAPaso(n) {
     const nota = document.createElement('div');
     nota.id = 'aviso-guardado';
     nota.className = 'panel panel-info';
+    // «Puedes volver después» no dice CÓMO ni A DÓNDE, y la instrucción de
+    // guardar el folio sólo vivía en el acuse — quien cierra aquí nunca la
+    // veía. Este aviso es, para mucha gente, la última pantalla que lee.
     nota.innerHTML =
       `<div class="label">Tu registro ya quedó guardado</div>
        <p class="body" style="font-size:15px;line-height:21px">
-         Tu folio es <b>${escapar(state.solicitud.folio)}</b>. Ahora sube los papeles;
-         si no los tienes a la mano, puedes volver después.
+         Tu folio es <b>${escapar(state.solicitud.folio)}</b>.
+         <b>Toma una captura de pantalla</b> para no perderlo.
+       </p>
+       <p class="body" style="font-size:15px;line-height:21px">
+         Si no tienes los papeles ahora, puedes cerrar. Para volver, entra al
+         mismo link y toca <b>«Ya me registré»</b>.
        </p>`;
     $('#step-3').prepend(nota);
   }
@@ -626,13 +659,6 @@ async function abrirRegreso(token) {
 async function init() {
   const params = new URLSearchParams(window.location.search);
 
-  // Enlaces de servicio: ?rescate=1 para quien perdió su link.
-  if (params.get('rescate') === '1') {
-    setView('view-rescate');
-    montarRescate();
-    return;
-  }
-
   try {
     const [programa, catalogo] = await Promise.all([
       api(`/api/public/apoyos/${PROGRAMA}`),
@@ -654,14 +680,20 @@ async function init() {
     show(chip);
   }
 
-  // Quien ya se registró desde este celular vuelve a SU trámite, no a uno nuevo.
-  const tokenURL = params.get('t');
-  const tokenGuardado = (() => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } })();
-  const token = tokenURL || tokenGuardado;
+  montarRescate();
 
-  if (token) {
-    await abrirRegreso(token);
-    montarRescate();
+  // El token en la URL ES una credencial explícita: quien abre SU link personal
+  // va directo a su trámite. Lo que ya no ocurre es el salto automático por
+  // `localStorage`: en planta se presta el celular, y ese atajo metía al
+  // compañero dentro del registro ajeno. Ahora eso se elige en la bifurcación.
+  const tokenURL = params.get('t');
+  if (tokenURL) {
+    await abrirRegreso(tokenURL);
+    return;
+  }
+
+  if (params.get('rescate') === '1') {
+    setView('view-rescate');
     return;
   }
 
@@ -675,8 +707,38 @@ async function init() {
   renderHijos();
   recordarAyudas();
   montarFormulario();
-  montarRescate();
-  setView('view-form');
+  montarInicio();
+  setView('view-inicio');
+}
+
+/**
+ * Bifurcación de entrada. Dos caminos explícitos —registrarse o volver— en vez
+ * de aterrizar en un formulario largo: es una sola decisión, y hace visible el
+ * regreso, que antes vivía escondido al final del paso 1.
+ */
+function montarInicio() {
+  const { folio } = leerSesion();
+
+  // Si este teléfono ya tiene un registro, el segundo botón deja de ser una
+  // pregunta y pasa a nombrarlo. Y aparece la salida para quien NO es esa
+  // persona — el caso del celular prestado.
+  if (folio) {
+    $('#btn-ya-registrado').textContent = `Continuar con mi registro (${folio})`;
+    show($('#btn-otro-registro'));
+  }
+
+  $('#btn-registrarme').addEventListener('click', () => {
+    irAPaso(1);
+    setView('view-form');
+  });
+
+  $('#btn-ya-registrado').addEventListener('click', async () => {
+    const { token } = leerSesion();
+    if (token) await abrirRegreso(token);
+    else setView('view-rescate');
+  });
+
+  $('#btn-otro-registro').addEventListener('click', () => setView('view-rescate'));
 }
 
 function montarFormulario() {
@@ -718,7 +780,7 @@ function montarFormulario() {
     setView('view-regreso');
   });
 
-  $('#btn-ya-registrado').addEventListener('click', () => setView('view-rescate'));
+  $('#btn-volver-inicio').addEventListener('click', () => setView('view-inicio'));
 
   $$('#form-datos input, #form-datos select').forEach((el) => {
     el.addEventListener('input', () => limpiarError(el.closest('.field')));
@@ -757,7 +819,7 @@ function montarRescate() {
       });
       state.token = data.token;
       state.solicitud = data;
-      try { localStorage.setItem(TOKEN_KEY, data.token); } catch { /* noop */ }
+      guardarSesion(data.token, data.folio);
       await abrirRegreso(data.token);
     } catch {
       // Mensaje idéntico exista o no la solicitud: el backend tampoco

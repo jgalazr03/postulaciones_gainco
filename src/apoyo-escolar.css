@@ -180,12 +180,12 @@ img, svg { display: block; max-width: 100%; }
 
 /* El panel «Cómo se entrega» explica el mismo tema que el encabezado:
    pertenece a ese grupo, no es un bloque aparte. */
-#view-form > #form-intro + #panel-mecanica { margin-top: 16px; }
+#view-inicio > #inicio-intro + #panel-mecanica { margin-top: 16px; }
 
-/* Aquí termina el contexto y empieza el trámite. Es el salto más grande de la
-   pantalla y el que faltaba. Especificidad de 2 clases/ids para ganarle a la
-   regla por defecto sin depender del orden del archivo. */
-#view-form > .progress { margin-top: 32px; }
+/* Aquí termina el contexto y empiezan las dos opciones. Es el salto más
+   grande de la pantalla. Especificidad de 2 ids para ganarle a la regla por
+   defecto sin depender del orden del archivo. */
+#view-inicio > #inicio-acciones { margin-top: 32px; }
 
 /* Título y su línea de apoyo son un solo grupo. */
 .headline + .body-sm,
