@@ -1,0 +1,483 @@
+/* ============================================================
+   Apoyo escolar — hoja de estilos Material 3
+   ============================================================
+
+   NO usa los tokens de style.css (el formulario de postulación). Aquel se
+   describe a sí mismo como «M3 surfaces tinted with Gainco blue» con valores
+   elegidos a mano y tipografía Outfit («Google Sans vibe»): un parecido, no el
+   sistema.
+
+   Aquí el esquema completo lo generó el algoritmo oficial de Google
+   (@material/material-color-utilities, SchemeTonalSpot, semilla #004979 — el
+   azul GAINCO), que es el mismo cálculo que corre Android para armar un tema
+   de Material You. Ningún color está elegido a ojo.
+
+   El motivo no es estético: quien llena esto es un trabajador de planta con
+   poco manejo de tecnología y un Android en la mano. Los campos, los botones y
+   las tarjetas que ya toca todos los días no le exigen aprender nada nuevo.
+
+   Light-only a propósito: es un trámite de una sola sesión y el esquema oscuro
+   duplicaría la superficie a revisar sin que nadie lo haya pedido.
+   ============================================================ */
+
+@import '@fontsource-variable/roboto-flex';
+
+:root {
+  /* ── M3 sys color (light) ── */
+  --md-primary: #33618d;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #d0e4ff;
+  --md-on-primary-container: #154974;
+  --md-secondary-container: #d6e4f7;
+  --md-on-secondary-container: #3b4857;
+  --md-error: #ba1a1a;
+  --md-on-error: #ffffff;
+  --md-error-container: #ffdad6;
+  --md-on-error-container: #93000a;
+  --md-surface: #f8f9ff;
+  --md-surface-lowest: #ffffff;
+  --md-surface-low: #f2f3f9;
+  --md-surface-container: #eceef4;
+  --md-surface-high: #e6e8ee;
+  --md-surface-highest: #e0e2e8;
+  --md-on-surface: #191c20;
+  --md-on-surface-variant: #42474e;
+  --md-outline: #73777f;
+  --md-outline-variant: #c2c7cf;
+  --md-inverse-surface: #2d3135;
+  --md-inverse-on-surface: #eff0f7;
+
+  /* M3 no define rol de advertencia ni de éxito: se extienden desde la misma
+     semilla, no con un ámbar y un verde sueltos. */
+  --md-warning: #7d5700;
+  --md-warning-container: #ffdea6;
+  --md-on-warning-container: #5f4100;
+  --md-success: #276b4b;
+  --md-success-container: #b0f1cb;
+  --md-on-success-container: #00522f;
+
+  /* Identidad GAINCO. El rojo NUNCA es color de acción ni de estado: es
+     prácticamente el mismo tono que el rol `error` (#ba1a1a), y en un botón
+     leería «peligro» donde dice «continuar». Vive sólo en la franja superior,
+     que además es la señal de que el link no es una estafa — algo que importa
+     cuando se piden actas de nacimiento por WhatsApp. */
+  --gainco-red: #b60f21;
+  --gainco-dark: #041c27;
+
+  /* Shape scale M3 */
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-full: 999px;
+
+  /* Motion M3 — «emphasized decelerate» para entradas */
+  --ease: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  --font: 'Roboto Flex Variable', Roboto, system-ui, -apple-system, sans-serif;
+}
+
+/* ── Reset mínimo ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  font-family: var(--font);
+  /* Body Large de M3. 16px además evita el zoom automático de iOS al enfocar
+     un campo, que en un formulario largo desorienta a cualquiera. */
+  font-size: 16px;
+  line-height: 24px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { border: none; background: none; cursor: pointer; }
+img, svg { display: block; max-width: 100%; }
+
+:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 2px;
+  border-radius: var(--shape-xs);
+}
+
+.hidden { display: none !important; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ============================================================
+   Estructura
+   ============================================================ */
+
+.shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100%;
+  background: var(--md-surface);
+}
+
+.brand-strip { height: 4px; background: var(--gainco-red); }
+
+/* Top app bar M3 (small): 64dp de alto, 16dp de padding lateral. */
+.appbar {
+  height: 64px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--md-surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.appbar-logo { height: 22px; width: auto; }
+.appbar-title {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.content {
+  padding: 8px 16px calc(32px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Escala tipográfica M3 */
+.headline { font-size: 24px; line-height: 32px; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
+.title { font-size: 18px; line-height: 26px; font-weight: 600; margin: 0; }
+.body { font-size: 16px; line-height: 24px; margin: 0; }
+.body-sm { font-size: 14px; line-height: 20px; color: var(--md-on-surface-variant); margin: 0; }
+.label { font-size: 14px; line-height: 20px; font-weight: 600; }
+
+/* ============================================================
+   Indicador de progreso — la defensa contra «ya terminé»
+   ============================================================ */
+
+.progress { display: flex; flex-direction: column; gap: 8px; }
+.progress-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: 12px; line-height: 16px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--md-primary);
+}
+.progress-head em { font-style: normal; text-transform: none; letter-spacing: 0; color: var(--md-on-surface-variant); }
+.progress-track { display: flex; gap: 4px; }
+.progress-track > span {
+  height: 4px; flex: 1; border-radius: 2px;
+  background: var(--md-surface-highest);
+  transition: background 240ms var(--ease);
+}
+.progress-track > span.on { background: var(--md-primary); }
+
+/* ============================================================
+   Outlined text field M3 — 56dp, radio 4dp, etiqueta flotante
+   ============================================================ */
+
+.field { position: relative; padding-top: 8px; display: block; }
+
+.field > input,
+.field > select {
+  width: 100%;
+  height: 56px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid var(--md-outline);
+  border-radius: var(--shape-xs);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--md-on-surface);
+  transition: border-color 120ms var(--ease);
+}
+.field > select {
+  appearance: none;
+  /* Espacio para el chevron dibujado abajo */
+  padding-right: 44px;
+}
+.field > input:focus,
+.field > select:focus {
+  outline: none;
+  border-color: var(--md-primary);
+  border-width: 2px;
+  /* Compensa el borde de 2px para que el texto no salte al enfocar */
+  padding-left: 15px;
+}
+.field > input::placeholder { color: var(--md-on-surface-variant); opacity: 1; }
+
+/* La etiqueta va SOBRE el borde y se recorta con el fondo (el «notch» de M3).
+   Como el campo puede vivir sobre `surface` o sobre una tarjeta, el color de
+   recorte es una variable que la tarjeta sobreescribe. */
+.field > .field-label {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  padding: 0 4px;
+  background: var(--field-notch, var(--md-surface));
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.03em;
+  color: var(--md-on-surface-variant);
+  pointer-events: none;
+}
+.field > input:focus ~ .field-label,
+.field > select:focus ~ .field-label { color: var(--md-primary); }
+
+.field-support {
+  padding: 4px 16px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--md-on-surface-variant);
+}
+
+.field-chevron {
+  position: absolute;
+  right: 16px;
+  top: 32px;
+  pointer-events: none;
+  color: var(--md-on-surface-variant);
+}
+
+/* Estado de error del campo */
+.field.is-error > input,
+.field.is-error > select { border-color: var(--md-error); }
+.field.is-error > .field-label { color: var(--md-error); }
+.field.is-error .field-support { color: var(--md-error); font-weight: 500; }
+
+/* ============================================================
+   Botones M3
+   ============================================================ */
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: var(--shape-full);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.01em;
+  transition: filter 120ms var(--ease), background 120ms var(--ease);
+}
+.btn:active { filter: brightness(0.94); }
+.btn[disabled] { opacity: 0.5; pointer-events: none; }
+
+.btn-filled { background: var(--md-primary); color: var(--md-on-primary); }
+.btn-outlined { border: 1px solid var(--md-outline); color: var(--md-primary); background: transparent; }
+.btn-text { min-height: 48px; color: var(--md-primary); background: transparent; }
+
+.btn-add {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 56px;
+  border: 1px dashed var(--md-outline);
+  border-radius: var(--shape-md);
+  color: var(--md-primary);
+  font-size: 16px; font-weight: 600;
+}
+
+/* ============================================================
+   Cards M3 (outlined, 12dp)
+   ============================================================ */
+
+.card {
+  --field-notch: var(--md-surface-lowest);
+  background: var(--md-surface-lowest);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--shape-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card-head .title { font-size: 16px; line-height: 24px; }
+
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: var(--shape-full);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--md-on-surface-variant);
+  flex: 0 0 auto;
+}
+
+/* ============================================================
+   Subida de documentos — list item M3 con avatar de 40dp
+   ============================================================ */
+
+.upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 72px;
+  padding: 12px 16px;
+  text-align: left;
+  border: 1px solid var(--md-outline);
+  border-radius: var(--shape-md);
+  color: var(--md-on-surface);
+  transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+.upload-avatar {
+  width: 40px; height: 40px;
+  border-radius: var(--shape-full);
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+}
+.upload-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.upload-text b { font-size: 16px; line-height: 22px; font-weight: 500; }
+.upload-text span { font-size: 12px; line-height: 16px; color: var(--md-on-surface-variant); }
+
+.upload.is-done {
+  border-color: var(--md-success);
+  background: var(--md-success-container);
+  color: var(--md-on-success-container);
+}
+.upload.is-done .upload-avatar { background: var(--md-success); color: #fff; }
+.upload.is-done .upload-text span { color: var(--md-on-success-container); opacity: 0.85; }
+
+.upload.is-missing {
+  border-color: var(--md-warning);
+  background: var(--md-warning-container);
+  color: var(--md-on-warning-container);
+}
+.upload.is-missing .upload-avatar { background: var(--md-warning); color: #fff; }
+.upload.is-missing .upload-text span { color: var(--md-on-warning-container); opacity: 0.85; }
+
+.upload.is-busy { opacity: 0.6; pointer-events: none; }
+
+/* ============================================================
+   Acuse
+   ============================================================ */
+
+.receipt {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 16px; text-align: center; padding-top: 8px;
+}
+.receipt-icon {
+  width: 72px; height: 72px;
+  border-radius: var(--shape-full);
+  display: flex; align-items: center; justify-content: center;
+  animation: pop 320ms var(--ease) both;
+}
+.receipt-icon.warn { background: var(--md-warning-container); color: var(--md-on-warning-container); }
+.receipt-icon.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
+
+@keyframes pop {
+  from { transform: scale(0.8); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .receipt-icon { animation: none; }
+  * { transition-duration: 1ms !important; }
+}
+
+.panel {
+  width: 100%;
+  text-align: left;
+  border-radius: var(--shape-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.panel-warn { background: var(--md-warning-container); color: var(--md-on-warning-container); }
+.panel-info { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.panel-error { background: var(--md-error-container); color: var(--md-on-error-container); }
+.panel b { font-weight: 700; }
+
+.missing-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.missing-list li { font-size: 15px; line-height: 20px; display: flex; gap: 8px; }
+.missing-list li::before { content: '•'; flex: 0 0 auto; }
+
+.deadline { font-size: 14px; line-height: 19px; font-weight: 700; }
+
+.folio {
+  width: 100%;
+  background: var(--md-surface-high);
+  border-radius: var(--shape-md);
+  padding: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.folio span {
+  font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+  font-weight: 600; color: var(--md-on-surface-variant);
+}
+.folio b {
+  font-family: ui-monospace, 'Roboto Mono', Menlo, monospace;
+  font-size: 32px; font-weight: 700; letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  text-align: left;
+  background: var(--md-surface-container);
+  border-radius: var(--shape-md);
+  padding: 12px 14px;
+  font-size: 14px; line-height: 19px;
+}
+.hint svg { flex: 0 0 auto; color: var(--md-primary); }
+
+.chip {
+  display: inline-flex; align-items: center;
+  height: 24px; padding: 0 10px;
+  border-radius: var(--shape-sm);
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.chip-neutral { background: var(--md-surface-highest); color: var(--md-on-surface-variant); }
+.chip-warn { background: var(--md-warning-container); color: var(--md-on-warning-container); }
+.chip-ok { background: var(--md-success-container); color: var(--md-on-success-container); }
+
+/* ============================================================
+   Snackbar M3 — errores globales
+   ============================================================ */
+
+.snackbar {
+  position: fixed;
+  left: 16px; right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  max-width: 448px;
+  margin: 0 auto;
+  background: var(--md-inverse-surface);
+  color: var(--md-inverse-on-surface);
+  border-radius: var(--shape-xs);
+  padding: 14px 16px;
+  font-size: 14px; line-height: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  z-index: 100;
+  animation: slide-up 240ms var(--ease) both;
+}
+@keyframes slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Spinner (circular progress M3) ── */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.center-state {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 48px 16px; text-align: center;
+  color: var(--md-on-surface-variant);
+}

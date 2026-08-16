@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Apoyo de útiles escolares | GAINCO</title>
+
+  <!-- Trámite interno con datos de menores: no debe aparecer en buscadores.
+       El acceso es por el link que RH manda por WhatsApp, no por búsqueda. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="description" content="Registro del apoyo de útiles escolares para hijos de trabajadores de GAINCO." />
+  <meta name="theme-color" content="#f8f9ff" />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/src/apoyo-escolar.css" />
+</head>
+
+<body>
+  <div class="shell">
+    <div class="brand-strip" aria-hidden="true"></div>
+
+    <header class="appbar">
+      <img src="/logo-gainco-color.svg" alt="GAINCO" class="appbar-logo" />
+      <span id="chip-cierre" class="chip chip-neutral hidden"></span>
+    </header>
+
+    <main id="content" class="content">
+
+      <!-- ── Cargando ────────────────────────────────────── -->
+      <section id="view-loading" class="center-state" aria-live="polite">
+        <span class="spinner" style="color: var(--md-primary)"></span>
+        <p class="body-sm">Cargando…</p>
+      </section>
+
+      <!-- ── Programa cerrado o inexistente ──────────────── -->
+      <section id="view-cerrado" class="hidden">
+        <h1 class="headline">El registro ya cerró</h1>
+        <p class="body">
+          El plazo para registrarte al apoyo de útiles escolares terminó.
+          Si tienes dudas, acércate a la oficina de Recursos Humanos.
+        </p>
+      </section>
+
+      <!-- ══ FORMULARIO ═══════════════════════════════════ -->
+      <section id="view-form" class="hidden">
+
+        <div id="form-intro">
+          <h1 class="headline">Apoyo de útiles escolares</h1>
+          <p class="body-sm" style="margin-top:4px">Ciclo escolar 2026-2027</p>
+        </div>
+
+        <div class="panel panel-info" id="panel-mecanica">
+          <div class="label">Cómo se entrega</div>
+          <p class="body" style="font-size:15px;line-height:21px">
+            El apoyo es un <b>crédito para comprar útiles en una papelería</b>.
+            No es dinero en efectivo ni depósito.
+          </p>
+        </div>
+
+        <div class="progress">
+          <div class="progress-head">
+            <span id="progress-paso">Paso 1 de 3</span>
+            <em id="progress-nombre">Tus datos</em>
+          </div>
+          <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" id="progress-track">
+            <span class="on"></span><span></span><span></span>
+          </div>
+        </div>
+
+        <!-- ── Paso 1: datos del trabajador ── -->
+        <div id="step-1">
+          <form id="form-datos" novalidate style="display:flex;flex-direction:column;gap:16px">
+            <div class="field" id="f-nombre">
+              <input type="text" id="nombre" name="nombre" autocomplete="name"
+                     placeholder=" " enterkeyhint="next" />
+              <label class="field-label" for="nombre">Tu nombre completo</label>
+              <p class="field-support"></p>
+            </div>
+
+            <div class="field" id="f-acceso">
+              <input type="text" id="numero_acceso" name="numero_acceso"
+                     inputmode="numeric" maxlength="20" placeholder=" " enterkeyhint="next" />
+              <label class="field-label" for="numero_acceso">Número de acceso</label>
+              <p class="field-support">Es el número que trae tu gafete.</p>
+            </div>
+
+            <div class="field" id="f-telefono">
+              <input type="tel" id="telefono" name="telefono" inputmode="tel"
+                     autocomplete="tel" maxlength="20" placeholder=" " enterkeyhint="next" />
+              <label class="field-label" for="telefono">Tu teléfono</label>
+              <p class="field-support">10 dígitos, para buscarte si falta algo.</p>
+            </div>
+
+            <div class="field" id="f-planta">
+              <select id="cliente_id" name="cliente_id">
+                <option value="">Selecciona…</option>
+              </select>
+              <label class="field-label" for="cliente_id">¿En qué planta trabajas?</label>
+              <span class="field-chevron" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </span>
+              <p class="field-support"></p>
+            </div>
+
+            <div class="field" id="f-ciudad">
+              <select id="ciudad" name="ciudad">
+                <option value="">Selecciona…</option>
+              </select>
+              <label class="field-label" for="ciudad">¿En qué ciudad?</label>
+              <span class="field-chevron" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </span>
+              <p class="field-support"></p>
+            </div>
+
+            <button type="submit" class="btn btn-filled">
+              Continuar
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- ── Paso 2: los hijos ── -->
+        <div id="step-2" class="hidden">
+          <form id="form-hijos" novalidate style="display:flex;flex-direction:column;gap:16px">
+            <p class="body-sm">
+              Anota a los hijos que sí van a estudiar este ciclo, desde kínder hasta
+              universidad, mientras no hayan cumplido 26 años.
+            </p>
+
+            <div id="hijos-lista" style="display:flex;flex-direction:column;gap:16px"></div>
+
+            <button type="button" class="btn-add" id="btn-agregar-hijo">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar otro hijo
+            </button>
+
+            <!-- El consentimiento vive AQUÍ, no en el paso 3, porque la
+                 solicitud se crea al salir de este paso: nada se guarda antes
+                 de que el trabajador acepte. Se suben actas de menores. -->
+            <label class="upload" id="consentimiento-wrap" style="cursor:pointer">
+              <input type="checkbox" id="consentimiento" style="width:22px;height:22px;flex:0 0 auto;accent-color:var(--md-primary)" />
+              <span class="upload-text">
+                <b style="font-size:15px">Acepto el aviso de privacidad</b>
+                <span>Autorizo a GAINCO a usar los datos y documentos de mis hijos únicamente para este apoyo escolar.</span>
+              </span>
+            </label>
+
+            <button type="submit" class="btn btn-filled">
+              Continuar
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+            </button>
+            <button type="button" class="btn btn-text" id="btn-volver-1">Regresar</button>
+          </form>
+        </div>
+
+        <!-- ── Paso 3: los papeles ── -->
+        <div id="step-3" class="hidden">
+          <p class="body-sm">
+            Toma foto de los papeles de cada hijo. Si no los tienes ahora, puedes
+            enviarlos después con tu folio.
+          </p>
+
+          <div id="docs-lista" style="display:flex;flex-direction:column;gap:16px;margin-top:16px"></div>
+
+          <button type="button" class="btn btn-filled" id="btn-enviar" style="margin-top:16px">
+            Terminar
+          </button>
+        </div>
+      </section>
+
+      <!-- ══ ACUSE ════════════════════════════════════════ -->
+      <section id="view-acuse" class="hidden">
+        <div class="receipt">
+          <div class="receipt-icon warn" id="acuse-icon">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 8.5v5"/><circle cx="12" cy="17" r="1.15" fill="currentColor" stroke="none"/>
+              <path d="M10.3 3.9 2.6 17.4A1.9 1.9 0 0 0 4.3 20.3h15.4a1.9 1.9 0 0 0 1.7-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/>
+            </svg>
+          </div>
+
+          <h1 class="headline" id="acuse-titulo">Te falta 1 paso</h1>
+          <p class="body" id="acuse-mensaje"></p>
+
+          <div class="panel panel-warn hidden" id="acuse-faltantes">
+            <div class="label">Nos faltan estos papeles:</div>
+            <ul class="missing-list" id="acuse-faltantes-lista"></ul>
+            <div class="deadline" id="acuse-deadline"></div>
+          </div>
+
+          <p class="body hidden" id="acuse-consecuencia">
+            Sin esos papeles no te podemos dar el apoyo.
+          </p>
+
+          <div class="folio">
+            <span>Tu folio</span>
+            <b id="acuse-folio">—</b>
+          </div>
+
+          <div class="hint">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M10 18.5h4"/></svg>
+            <span>Toma una <b>captura de pantalla</b> de esta hoja para que no se te pierda tu folio.</span>
+          </div>
+
+          <button type="button" class="btn btn-filled hidden" id="btn-subir-ahora">
+            Subir las fotos ahora
+          </button>
+          <p class="body-sm hidden" id="acuse-oficina">
+            También puedes llevar los papeles a la oficina de Recursos Humanos.
+          </p>
+        </div>
+      </section>
+
+      <!-- ══ REGRESO (faltan papeles) ═════════════════════ -->
+      <section id="view-regreso" class="hidden">
+        <h1 class="headline" id="regreso-titulo">Te faltan papeles</h1>
+        <p class="body-sm" id="regreso-sub"></p>
+        <div id="regreso-lista" style="display:flex;flex-direction:column;gap:16px;margin-top:8px"></div>
+      </section>
+
+      <!-- ══ RESCATE (perdí mi link) ══════════════════════ -->
+      <section id="view-rescate" class="hidden">
+        <h1 class="headline">Busca tu registro</h1>
+        <p class="body-sm">Escribe tu folio y tu número de acceso.</p>
+
+        <form id="form-rescate" novalidate style="display:flex;flex-direction:column;gap:16px;margin-top:8px">
+          <div class="field" id="f-folio">
+            <input type="text" id="folio" maxlength="5" autocapitalize="characters"
+                   autocomplete="off" placeholder=" " style="text-transform:uppercase" />
+            <label class="field-label" for="folio">Tu folio</label>
+            <p class="field-support">Son 5 caracteres, como 7K4M2.</p>
+          </div>
+
+          <div class="field" id="f-acceso-rescate">
+            <input type="text" id="acceso_rescate" maxlength="20" inputmode="numeric" placeholder=" " />
+            <label class="field-label" for="acceso_rescate">Número de acceso</label>
+            <p class="field-support"></p>
+          </div>
+
+          <button type="submit" class="btn btn-filled">Buscar mi registro</button>
+        </form>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="snackbar" class="snackbar hidden" role="status" aria-live="assertive"></div>
+
+  <!-- ══ Plantillas ═══════════════════════════════════════ -->
+
+  <template id="tpl-hijo">
+    <div class="card" data-hijo>
+      <div class="card-head">
+        <h2 class="title" data-titulo>Hijo 1</h2>
+        <button type="button" class="icon-btn" data-quitar aria-label="Quitar este hijo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <input type="text" data-campo="nombre" placeholder=" " autocomplete="off" />
+        <label class="field-label">Nombre completo</label>
+        <p class="field-support"></p>
+      </div>
+
+      <div class="field">
+        <input type="date" data-campo="fecha_nacimiento" placeholder=" " />
+        <label class="field-label">Fecha de nacimiento</label>
+        <p class="field-support"></p>
+      </div>
+
+      <div class="field">
+        <select data-campo="nivel">
+          <option value="">Selecciona…</option>
+          <option value="preescolar">Kínder / preescolar</option>
+          <option value="primaria">Primaria</option>
+          <option value="secundaria">Secundaria</option>
+          <option value="preparatoria">Preparatoria</option>
+          <option value="universidad">Universidad</option>
+        </select>
+        <label class="field-label">¿Qué va a cursar?</label>
+        <span class="field-chevron" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+        <p class="field-support"></p>
+      </div>
+
+      <div class="field">
+        <input type="text" data-campo="escuela" placeholder=" " autocomplete="off" />
+        <label class="field-label">Escuela</label>
+        <p class="field-support"></p>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-docs-hijo">
+    <div class="card" data-docs-hijo>
+      <div class="card-head">
+        <h2 class="title" data-nombre></h2>
+        <span class="chip chip-warn hidden" data-faltan></span>
+      </div>
+      <div data-slots style="display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+  </template>
+
+  <template id="tpl-upload">
+    <label class="upload" data-upload>
+      <span class="upload-avatar" data-avatar>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>
+          <circle cx="12" cy="13" r="3.4"/>
+        </svg>
+      </span>
+      <span class="upload-text">
+        <b data-etiqueta></b>
+        <span data-ayuda></span>
+      </span>
+      <input type="file" class="sr-only" accept="image/*,application/pdf" capture="environment" data-input />
+    </label>
+  </template>
+
+  <script type="module" src="/src/apoyo-escolar.js"></script>
+</body>
+</html>
