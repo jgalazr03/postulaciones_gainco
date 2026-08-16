@@ -237,6 +237,12 @@ img, svg { display: block; max-width: 100%; }
   color: var(--md-on-surface-variant);
 }
 
+/* Un campo sin texto de ayuda no debe separarse de su vecino más que los
+   demás. El <p> vacío existe para poder llenarlo con el mensaje de error sin
+   recalcular layout, pero mientras esté vacío no ocupa nada: si no, dos campos
+   hermanos quedan con espaciados distintos por una razón invisible. */
+.field-support:empty { display: none; }
+
 .field-chevron {
   position: absolute;
   right: 16px;

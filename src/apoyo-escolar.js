@@ -73,11 +73,25 @@ function marcarError(fieldEl, mensaje) {
   if (support) support.textContent = mensaje;
 }
 
-function limpiarError(fieldEl, ayudaOriginal = '') {
+/**
+ * Cada campo recuerda su texto de ayuda la primera vez que se ve, para poder
+ * restaurarlo al limpiar un error. Sin esto, escribir en «Número de acceso»
+ * borraba para siempre el «Es el número que trae tu gafete» — y con
+ * `.field-support:empty` colapsando el espacio, además brincaba el layout.
+ */
+function recordarAyudas(root = document) {
+  $$('.field', root).forEach((f) => {
+    if (f.dataset.ayuda !== undefined) return;
+    const support = $('.field-support', f);
+    if (support) f.dataset.ayuda = support.textContent.trim();
+  });
+}
+
+function limpiarError(fieldEl) {
   if (!fieldEl) return;
   fieldEl.classList.remove('is-error');
   const support = $('.field-support', fieldEl);
-  if (support) support.textContent = ayudaOriginal;
+  if (support) support.textContent = fieldEl.dataset.ayuda || '';
 }
 
 // ============================================================
@@ -178,8 +192,8 @@ function validarPaso1() {
   const { nombre, numero_acceso: acceso, telefono, cliente_id: cliente, ciudad } = state.datos;
 
   limpiarError($('#f-nombre'));
-  limpiarError($('#f-acceso'), 'Es el número que trae tu gafete.');
-  limpiarError($('#f-telefono'), '10 dígitos, para buscarte si falta algo.');
+  limpiarError($('#f-acceso'));
+  limpiarError($('#f-telefono'));
   limpiarError($('#f-planta'));
   limpiarError($('#f-ciudad'));
 
@@ -245,6 +259,8 @@ function renderHijos() {
 
     cont.append(card);
   });
+
+  recordarAyudas(cont);
 }
 
 function validarPaso2() {
@@ -521,11 +537,18 @@ const escapar = (t) => String(t).replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 
-/** '2026-08-21' → 'viernes 21 de agosto'. La fecha viene del backend. */
+/**
+ * '2026-08-21' → 'viernes 21 de agosto'. La fecha la genera el backend; aquí
+ * sólo se le da forma para leerla dentro de una frase, y por eso se quita la
+ * coma que mete `toLocaleDateString` («viernes, 21 de agosto» lee raro en
+ * «Tienes hasta el …»).
+ */
 function formatearFecha(iso) {
   const d = new Date(`${iso}T12:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+  return d
+    .toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+    .replace(',', '');
 }
 
 // ============================================================
@@ -650,6 +673,7 @@ async function init() {
   cargarBorrador();
   pintarCatalogo();
   renderHijos();
+  recordarAyudas();
   montarFormulario();
   montarRescate();
   setView('view-form');
@@ -694,8 +718,10 @@ function montarFormulario() {
     setView('view-regreso');
   });
 
+  $('#btn-ya-registrado').addEventListener('click', () => setView('view-rescate'));
+
   $$('#form-datos input, #form-datos select').forEach((el) => {
-    el.addEventListener('input', () => limpiarError(el.closest('.field'), ''));
+    el.addEventListener('input', () => limpiarError(el.closest('.field')));
   });
 }
 
@@ -709,7 +735,7 @@ function montarRescate() {
     const folio = $('#folio').value.trim().toUpperCase();
     const acceso = $('#acceso_rescate').value.trim();
 
-    limpiarError($('#f-folio'), 'Son 5 caracteres, como 7K4M2.');
+    limpiarError($('#f-folio'));
     limpiarError($('#f-acceso-rescate'));
 
     if (folio.length !== 5) {
