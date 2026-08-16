@@ -145,11 +145,60 @@ img, svg { display: block; max-width: 100%; }
 }
 
 .content {
-  padding: 8px 16px calc(32px + env(safe-area-inset-bottom));
+  padding: 16px 16px calc(40px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
+
+/* ============================================================
+   Ritmo vertical
+   ============================================================
+
+   El espaciado NO es uniforme, a propósito. Un `gap` parejo trata igual a un
+   subtítulo pegado a su título y a un cambio de tema completo, y entonces nada
+   se lee como grupo: es exactamente por qué «PASO 1 DE 3» aparecía encajado
+   contra el panel de arriba.
+
+   Escala (múltiplos de 8, como M3):
+     8px  — un elemento y su acompañante directo (título → subtítulo)
+     16px — elementos relacionados dentro del mismo grupo
+     24px — grupos distintos dentro de la misma pantalla
+     32px — cambio de sección (del «qué es esto» al «llena esto»)
+   ============================================================ */
+
+.content > section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Separación por defecto entre bloques de una vista: grupos distintos. */
+.content > section > * + * { margin-top: 24px; }
+
+/* El estado de carga ya tiene su propio gap y es un grupo, no una lista de
+   bloques: sin esto, el spinner y su leyenda quedaban a 36px (gap + margen). */
+.content > .center-state > * + * { margin-top: 0; }
+
+/* El panel «Cómo se entrega» explica el mismo tema que el encabezado:
+   pertenece a ese grupo, no es un bloque aparte. */
+#view-form > #form-intro + #panel-mecanica { margin-top: 16px; }
+
+/* Aquí termina el contexto y empieza el trámite. Es el salto más grande de la
+   pantalla y el que faltaba. Especificidad de 2 clases/ids para ganarle a la
+   regla por defecto sin depender del orden del archivo. */
+#view-form > .progress { margin-top: 32px; }
+
+/* Título y su línea de apoyo son un solo grupo. */
+.headline + .body-sm,
+.headline + .body { margin-top: 8px; }
+
+/* Pilas reutilizables. Existen para que ningún margen viva en un `style=`
+   inline: mezclado con las reglas de arriba, un margen inline gana siempre y
+   rompe el ritmo sin dejar rastro de dónde. */
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.stack-sm { display: flex; flex-direction: column; gap: 12px; }
+
+/* Dentro de un paso, cada bloque es un grupo distinto. */
+#step-1, #step-2, #step-3 { display: flex; flex-direction: column; gap: 24px; }
 
 /* Escala tipográfica M3 */
 .headline { font-size: 24px; line-height: 32px; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
@@ -370,8 +419,22 @@ img, svg { display: block; max-width: 100%; }
 
 .receipt {
   display: flex; flex-direction: column; align-items: center;
-  gap: 16px; text-align: center; padding-top: 8px;
+  text-align: center; padding-top: 8px;
 }
+
+/* Mismo criterio que el ritmo vertical de arriba: el acuse tenía un gap parejo
+   de 16px que ponía a la misma distancia el título de su mensaje y el bloque
+   de faltantes de la zona de botones. Se agrupa por relación, por id, para que
+   ocultar un bloque (caso «completo») no descuadre al siguiente. */
+.receipt > * + * { margin-top: 16px; }
+#acuse-titulo { margin-top: 16px; }          /* tras el ícono */
+#acuse-mensaje { margin-top: 8px; }          /* pegado a su título */
+#acuse-faltantes { margin-top: 24px; }       /* bloque aparte */
+#acuse-consecuencia { margin-top: 16px; }
+.receipt > .folio { margin-top: 24px; }
+.receipt > .hint { margin-top: 12px; }       /* habla del folio de arriba */
+#btn-subir-ahora { margin-top: 24px; }       /* zona de acciones */
+#acuse-oficina { margin-top: 12px; }
 .receipt-icon {
   width: 72px; height: 72px;
   border-radius: var(--shape-full);

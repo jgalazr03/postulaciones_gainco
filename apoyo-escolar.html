@@ -46,7 +46,7 @@
 
         <div id="form-intro">
           <h1 class="headline">Apoyo de útiles escolares</h1>
-          <p class="body-sm" style="margin-top:4px">Ciclo escolar 2026-2027</p>
+          <p class="body-sm">Ciclo escolar 2026-2027</p>
         </div>
 
         <div class="panel panel-info" id="panel-mecanica">
@@ -69,7 +69,7 @@
 
         <!-- ── Paso 1: datos del trabajador ── -->
         <div id="step-1">
-          <form id="form-datos" novalidate style="display:flex;flex-direction:column;gap:16px">
+          <form id="form-datos" class="stack" novalidate>
             <div class="field" id="f-nombre">
               <input type="text" id="nombre" name="nombre" autocomplete="name"
                      placeholder=" " enterkeyhint="next" />
@@ -129,13 +129,13 @@
 
         <!-- ── Paso 2: los hijos ── -->
         <div id="step-2" class="hidden">
-          <form id="form-hijos" novalidate style="display:flex;flex-direction:column;gap:16px">
+          <form id="form-hijos" class="stack" novalidate>
             <p class="body-sm">
               Anota a los hijos que sí van a estudiar este ciclo, desde kínder hasta
               universidad, mientras no hayan cumplido 26 años.
             </p>
 
-            <div id="hijos-lista" style="display:flex;flex-direction:column;gap:16px"></div>
+            <div id="hijos-lista" class="stack"></div>
 
             <button type="button" class="btn-add" id="btn-agregar-hijo">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -168,9 +168,9 @@
             enviarlos después con tu folio.
           </p>
 
-          <div id="docs-lista" style="display:flex;flex-direction:column;gap:16px;margin-top:16px"></div>
+          <div id="docs-lista" class="stack"></div>
 
-          <button type="button" class="btn btn-filled" id="btn-enviar" style="margin-top:16px">
+          <button type="button" class="btn btn-filled" id="btn-enviar">
             Terminar
           </button>
         </div>
@@ -222,7 +222,7 @@
       <section id="view-regreso" class="hidden">
         <h1 class="headline" id="regreso-titulo">Te faltan papeles</h1>
         <p class="body-sm" id="regreso-sub"></p>
-        <div id="regreso-lista" style="display:flex;flex-direction:column;gap:16px;margin-top:8px"></div>
+        <div id="regreso-lista" class="stack"></div>
       </section>
 
       <!-- ══ RESCATE (perdí mi link) ══════════════════════ -->
@@ -230,7 +230,7 @@
         <h1 class="headline">Busca tu registro</h1>
         <p class="body-sm">Escribe tu folio y tu número de acceso.</p>
 
-        <form id="form-rescate" novalidate style="display:flex;flex-direction:column;gap:16px;margin-top:8px">
+        <form id="form-rescate" class="stack" novalidate>
           <div class="field" id="f-folio">
             <input type="text" id="folio" maxlength="5" autocapitalize="characters"
                    autocomplete="off" placeholder=" " style="text-transform:uppercase" />
@@ -306,7 +306,7 @@
         <h2 class="title" data-nombre></h2>
         <span class="chip chip-warn hidden" data-faltan></span>
       </div>
-      <div data-slots style="display:flex;flex-direction:column;gap:12px"></div>
+      <div data-slots class="stack-sm"></div>
     </div>
   </template>
 
