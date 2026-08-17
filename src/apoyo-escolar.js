@@ -6,7 +6,7 @@
  *
  * DECISIÓN DE FLUJO — la solicitud se crea al terminar el PASO 2, no al final:
  * el censo (quién tiene cuántos hijos estudiando) es el dato que RH necesita
- * para negociar con la papelería, y los papeles pueden llegar después. Si la
+ * para dimensionar el apoyo, y los papeles pueden llegar después. Si la
  * creación esperara al último botón, un trabajador que se atora subiendo fotos
  * —el escenario más probable con esta población— no quedaría registrado. Así,
  * su registro está a salvo desde que termina de anotar a sus hijos.
@@ -35,7 +35,14 @@ const state = {
   programa: null,
   catalogo: { clientes: [], ciudades: [] },
   paso: 1,
-  datos: { nombre: '', numero_acceso: '', telefono: '', cliente_id: '', ciudad: '' },
+  datos: {
+    nombre: '', numero_acceso: '', telefono: '', cliente_id: '', ciudad: '',
+    correo: '',
+    // '' | 'si' | 'no'. El vacío es «todavía no contesta», y no es lo mismo que
+    // «no tiene»: sin distinguirlos, la pantalla arrancaría afirmando por él.
+    tarjeta: '',
+    clabe: '',
+  },
   hijos: [nuevoHijo()],
   solicitud: null,
   token: null,
@@ -247,7 +254,11 @@ function cerrarSnackbar() {
  * abriría la lista de opciones encima de la explicación que acaba de aparecer.
  */
 function enfocarPrimerError(root = document) {
-  const campo = $('.field.is-error', root);
+  // `.field-group` también: la pregunta de la tarjeta no es un `.field`, y
+  // dejarla fuera devolvería el defecto que este scroll existe para evitar —el
+  // toque en «Continuar» que no mueve nada porque el error está fuera de la
+  // vista, y se lee como que la página se trabó.
+  const campo = $('.field.is-error, .field-group.is-error', root);
   if (!campo) return;
   campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
   const input = $('input', campo);
@@ -268,7 +279,7 @@ function marcarError(fieldEl, mensaje) {
  * `.field-support:empty` colapsando el espacio, además brincaba el layout.
  */
 function recordarAyudas(root = document) {
-  $$('.field', root).forEach((f) => {
+  $$('.field, .field-group', root).forEach((f) => {
     if (f.dataset.ayuda !== undefined) return;
     const support = $('.field-support', f);
     if (support) f.dataset.ayuda = support.textContent.trim();
@@ -319,7 +330,14 @@ async function api(path, { method = 'GET', body, formData } = {}) {
 
 function guardarBorrador() {
   try {
-    localStorage.setItem(BORRADOR_KEY, JSON.stringify({ datos: state.datos, hijos: state.hijos }));
+    // La CLABE se queda FUERA del borrador, sola entre todos los campos. El
+    // resto es «quién soy» —nombre, gafete, teléfono— y ya vivía aquí; ésta es
+    // «dónde está mi dinero», y este mismo archivo documenta que en planta se
+    // presta el celular. El costo de excluirla es volver a teclear 18 dígitos
+    // en el caso raro de cerrar la pestaña a media captura; el de guardarla es
+    // dejarla en un teléfono que va a pasar por otras manos.
+    const { clabe: _clabe, ...datos } = state.datos;
+    localStorage.setItem(BORRADOR_KEY, JSON.stringify({ datos, hijos: state.hijos }));
   } catch { /* modo privado o sin cuota: el borrador es una comodidad, no un requisito */ }
 }
 
@@ -362,6 +380,55 @@ function pintarCatalogo() {
   $('#nombre').value = state.datos.nombre || '';
   $('#numero_acceso').value = state.datos.numero_acceso || '';
   $('#telefono').value = state.datos.telefono || '';
+  $('#correo').value = state.datos.correo || '';
+  $('#clabe').value = state.datos.clabe || '';
+
+  const marcado = $(`input[name="tarjeta"][value="${state.datos.tarjeta}"]`);
+  if (marcado) marcado.checked = true;
+  aplicarTarjeta();
+  pintarConteoClabe();
+}
+
+/**
+ * Muestra u oculta lo que depende de la respuesta sobre la tarjeta.
+ *
+ * Se llama tanto al contestar como al restaurar el borrador: si sólo colgara
+ * del evento, quien vuelve con un borrador que decía «sí» encontraría marcada
+ * la opción y el campo de CLABE escondido, con su valor guardado invisible.
+ */
+function aplicarTarjeta() {
+  const respuesta = $('input[name="tarjeta"]:checked')?.value || '';
+  $('#f-clabe').classList.toggle('hidden', respuesta !== 'si');
+  $('#panel-sin-tarjeta').classList.toggle('hidden', respuesta !== 'no');
+}
+
+/**
+ * Filtra el campo de la CLABE a dígitos y dice cuántos van.
+ *
+ * Se filtra EN EL CAMPO, no sólo al leerlo, para que lo escrito sea exactamente
+ * lo que se manda: la CLABE se pega desde la app del banco y suele traer
+ * espacios. Y se cuenta en voz alta porque 18 dígitos copiados a mano en un
+ * celular se pierden a media cuenta; sin el conteo, el único aviso llegaría al
+ * tocar «Continuar», que es tarde.
+ *
+ * Vive fuera del listener para poder llamarse también al restaurar el borrador.
+ */
+function pintarConteoClabe() {
+  const input = $('#clabe');
+  const limpio = input.value.replace(/\D/g, '').slice(0, 18);
+  if (limpio !== input.value) input.value = limpio;
+
+  const conteo = $('#clabe-conteo');
+  if (limpio.length === 18) conteo.textContent = 'Listo: 18 de 18 dígitos.';
+  else if (limpio.length > 0) conteo.textContent = `Van ${limpio.length} de 18 dígitos.`;
+  else {
+    // Sin dígitos vuelve la ayuda. Se lee de `dataset.ayuda`, pero esta función
+    // corre también desde `pintarCatalogo()`, que va ANTES de `recordarAyudas()`:
+    // ahí todavía no existe, y escribir `''` borraría el «Son 18 dígitos» que
+    // trae el HTML, para siempre y sin dejar rastro de por qué.
+    const ayuda = $('#f-clabe').dataset.ayuda;
+    if (ayuda !== undefined) conteo.textContent = ayuda;
+  }
 }
 
 function leerPaso1() {
@@ -371,19 +438,30 @@ function leerPaso1() {
     telefono: $('#telefono').value.trim(),
     cliente_id: $('#cliente_id').value,
     ciudad: $('#ciudad').value,
+    correo: $('#correo').value.trim(),
+    tarjeta: $('input[name="tarjeta"]:checked')?.value || '',
+    // Sólo los dígitos: se copia de la app del banco y suele venir con
+    // espacios. Rechazarla por eso sería castigar un pegado correcto.
+    clabe: $('#clabe').value.replace(/\D/g, ''),
   };
 }
 
 function validarPaso1() {
   leerPaso1();
   let ok = true;
-  const { nombre, numero_acceso: acceso, telefono, cliente_id: cliente, ciudad } = state.datos;
+  const {
+    nombre, numero_acceso: acceso, telefono, cliente_id: cliente, ciudad,
+    correo, tarjeta, clabe,
+  } = state.datos;
 
   limpiarError($('#f-nombre'));
   limpiarError($('#f-acceso'));
   limpiarError($('#f-telefono'));
   limpiarError($('#f-planta'));
   limpiarError($('#f-ciudad'));
+  limpiarError($('#f-correo'));
+  limpiarError($('#f-tarjeta'));
+  limpiarError($('#f-clabe'));
 
   if (nombre.length < 3) {
     marcarError($('#f-nombre'), 'Escribe tu nombre completo.');
@@ -402,6 +480,29 @@ function validarPaso1() {
   }
   if (!cliente) { marcarError($('#f-planta'), 'Selecciona tu planta.'); ok = false; }
   if (!ciudad) { marcarError($('#f-ciudad'), 'Selecciona tu ciudad.'); ok = false; }
+
+  // El correo es obligatorio desde que el apoyo se paga por transferencia. La
+  // comprobación es deliberadamente floja —algo, arroba, algo, punto, algo—:
+  // el backend valida de verdad, y una regex estricta aquí rechazaría correos
+  // válidos y raros dejando al trabajador sin forma de seguir.
+  if (!correo) {
+    marcarError($('#f-correo'), 'Escribe tu correo electrónico.');
+    ok = false;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+    marcarError($('#f-correo'), 'Revisa tu correo: se escribe como nombre@correo.com.');
+    ok = false;
+  }
+
+  if (!tarjeta) {
+    marcarError($('#f-tarjeta'), 'Contesta si GAINCO te dio tarjeta.');
+    ok = false;
+  } else if (tarjeta === 'si' && clabe.length !== 18) {
+    marcarError(
+      $('#f-clabe'),
+      clabe ? `Van ${clabe.length} de 18 dígitos.` : 'Escribe los 18 dígitos de tu CLABE.',
+    );
+    ok = false;
+  }
 
   guardarBorrador();
   return ok;
@@ -535,6 +636,12 @@ async function crearSolicitud(botón) {
         telefono: state.datos.telefono,
         cliente_id: state.datos.cliente_id || null,
         ciudad: state.datos.ciudad || null,
+        correo: state.datos.correo,
+        tiene_tarjeta_gainco: state.datos.tarjeta === 'si',
+        // Sólo viaja si contestó que sí. El backend rechaza el par incoherente
+        // —CLABE con `tiene_tarjeta_gainco: false`— y con razón: sería una
+        // cuenta de la que nadie sabe de quién es.
+        clabe: state.datos.tarjeta === 'si' ? state.datos.clabe : null,
         consentimiento: true,
         // El backend descarta la solicitud (201 falso, cero escritura) si este
         // campo trae valor. Una persona nunca lo ve; sólo un bot que llena
@@ -1430,6 +1537,26 @@ function montarFormulario() {
 
   $$('#form-datos input, #form-datos select').forEach((el) => {
     el.addEventListener('input', () => limpiarError(el.closest('.field')));
+  });
+
+  // Contestar la pregunta de la tarjeta abre o cierra el campo de la CLABE. Los
+  // radios no emiten `input` en todos los navegadores del piso de esta página
+  // (Chrome 84), así que va por `change`, y limpia su propio error a mano.
+  $$('input[name="tarjeta"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      limpiarError($('#f-tarjeta'));
+      aplicarTarjeta();
+    });
+  });
+
+  // La CLABE se teclea o se pega desde la app del banco. Se filtran los no
+  // dígitos EN EL CAMPO —no sólo al leerlo— para que lo que ve escrito sea
+  // exactamente lo que se va a mandar, y se cuenta en voz alta: 18 dígitos
+  // copiados a mano en un celular se pierden a media cuenta, y sin el conteo
+  // el único aviso llegaría al tocar «Continuar».
+  $('#clabe').addEventListener('input', () => {
+    limpiarError($('#f-clabe'));
+    pintarConteoClabe();
   });
 }
 

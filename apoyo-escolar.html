@@ -67,8 +67,8 @@
         <div class="panel panel-info" id="panel-mecanica">
           <div class="label">Cómo se entrega</div>
           <p class="body" style="font-size:15px;line-height:21px">
-            El apoyo es un <b>crédito para comprar útiles en una papelería</b>.
-            No es dinero en efectivo ni depósito.
+            El apoyo es <b>dinero</b>. Se deposita por transferencia, aparte de
+            tu pago de nómina.
           </p>
         </div>
 
@@ -92,6 +92,13 @@
           <p class="body-sm">
             Sirve la foto que ya tengas en el teléfono. No necesitas llevar los
             papeles a ningún lado.
+          </p>
+          <!-- Se avisa AQUÍ y no al llegar al campo: la CLABE no está impresa
+               en la tarjeta, hay que abrir la app del banco. Descubrirlo a
+               media captura es exactamente el abandono que este panel evita. -->
+          <p class="body-sm" id="tener-clabe">
+            <b>Si GAINCO te dio tarjeta de Santander</b>, ten también tu CLABE a
+            la mano. Son 18 dígitos y vienen en la app del banco.
           </p>
         </div>
 
@@ -186,6 +193,74 @@
               <p class="field-support"></p>
             </div>
 
+            <!-- ── Cómo te pagamos ──────────────────────────────
+                 Bloque rotulado, no tres campos sueltos al final de la lista.
+                 La pregunta que se hace cualquiera al ver un campo de CLABE en
+                 un formulario es «¿y esto para qué?», y de eso depende que la
+                 escriba o cierre la página. El encabezado la contesta antes. -->
+            <div class="form-section">
+              <div class="label">Cómo te pagamos</div>
+              <p class="body-sm">
+                El apoyo se deposita por transferencia.
+              </p>
+            </div>
+
+            <div class="field" id="f-correo">
+              <input type="email" id="correo" name="correo" inputmode="email"
+                     autocomplete="email" autocapitalize="off" spellcheck="false"
+                     maxlength="300" placeholder=" " enterkeyhint="next" />
+              <label class="field-label" for="correo">Tu correo electrónico</label>
+              <p class="field-support">Para avisarte de éste y de otros trámites de RH.</p>
+            </div>
+
+            <!-- Pregunta que bifurca. Sin ella, a quien no tiene tarjeta de
+                 GAINCO se le pediría una CLABE que no tiene y se quedaría
+                 atorado; y la del banco donde sí cobra no es la que contabilidad
+                 pidió. Se responde con dos blancos grandes, no con un select:
+                 un desplegable de dos opciones esconde la mitad de la pregunta. -->
+            <fieldset class="field-group" id="f-tarjeta">
+              <legend class="field-question">¿GAINCO te dio una tarjeta de Santander?</legend>
+              <!-- Un solo `.field-support`, como los demás campos: es la ayuda
+                   y es donde aparece el error. Con dos, `marcarError` escribiría
+                   sobre el primero y la ayuda se perdería sin poder restaurarse. -->
+              <p class="field-support">La que te entregaron en la empresa, no una tuya de otro banco.</p>
+              <div class="choices">
+                <label class="choice">
+                  <input type="radio" name="tarjeta" value="si" />
+                  <span class="choice-body">Sí me la dieron</span>
+                </label>
+                <label class="choice">
+                  <input type="radio" name="tarjeta" value="no" />
+                  <span class="choice-body">No tengo</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="field hidden" id="f-clabe">
+              <!-- SIN `maxlength`. Lo tenía, y truncaba el pegado: la CLABE se
+                   copia de la app del banco y llega con espacios («0141 8065
+                   5043 2109 87» son 22 caracteres), así que el navegador
+                   cortaba a los 18 primeros y se perdían cuatro DÍGITOS sin que
+                   nadie lo notara. El recorte a 18 lo hace el JS después de
+                   quitar los espacios, que es cuando la cuenta significa algo. -->
+              <input type="text" id="clabe" name="clabe" inputmode="numeric"
+                     autocomplete="off" placeholder=" " enterkeyhint="next" />
+              <label class="field-label" for="clabe">CLABE de tu tarjeta</label>
+              <!-- El contador vive aquí y se actualiza al teclear: 18 dígitos
+                   copiados a mano en un celular se pierden a media cuenta. -->
+              <p class="field-support" id="clabe-conteo">Son 18 dígitos. Vienen en la app del banco o en tu estado de cuenta.</p>
+            </div>
+
+            <!-- Se muestra sólo al contestar «No tengo». Es la mitad de la
+                 bifurcación que evita que esa persona crea que el trámite no
+                 es para ella y abandone. -->
+            <div class="panel panel-info hidden" id="panel-sin-tarjeta">
+              <p class="body" style="font-size:15px;line-height:21px">
+                No hay problema: <b>termina tu registro</b>. Recursos Humanos te
+                busca para ponerse de acuerdo en cómo te entregamos el apoyo.
+              </p>
+            </div>
+
             <button type="submit" class="btn btn-filled">
               Continuar
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
@@ -219,7 +294,12 @@
               <input type="checkbox" id="consentimiento" style="width:22px;height:22px;flex:0 0 auto;accent-color:var(--md-primary)" />
               <span class="upload-text">
                 <b style="font-size:15px">Acepto el aviso de privacidad</b>
-                <span>Autorizo a GAINCO a usar los datos y documentos de mis hijos únicamente para este apoyo escolar.</span>
+                <!-- El texto anterior decía «únicamente para este apoyo
+                     escolar». Desde que el formulario pide correo y CLABE para
+                     completar el expediente, ese consentimiento se quedó corto:
+                     recabar un dato para un fin que no se declaró no se arregla
+                     con copy. Aquí se nombran los dos fines por separado. -->
+                <span>Autorizo a GAINCO a usar los datos y documentos de mis hijos para este apoyo escolar, y mi correo y mi CLABE para pagármelo y para completar mi expediente de trabajador.</span>
               </span>
             </label>
 
@@ -278,11 +358,11 @@
             <div class="label">Qué sigue</div>
             <p class="body" style="font-size:15px;line-height:21px">
               Recursos Humanos revisa los papeles y te avisa por WhatsApp
-              <b>al número que registraste</b> cuándo y dónde recoger tu vale.
+              <b>al número que registraste</b>.
             </p>
             <p class="body" style="font-size:15px;line-height:21px">
-              El apoyo es un <b>crédito para comprar útiles en una papelería</b>,
-              no dinero en efectivo.
+              El apoyo es <b>dinero</b> y se deposita por transferencia, aparte
+              de tu pago de nómina.
             </p>
           </div>
 

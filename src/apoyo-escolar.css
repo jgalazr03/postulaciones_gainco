@@ -335,6 +335,126 @@ img, svg { display: block; max-width: 100%; }
 .field.is-error .field-support { color: var(--md-error); font-weight: 500; }
 
 /* ============================================================
+   Bloque rotulado dentro de un paso
+
+   El paso 1 dejó de ser una lista plana de campos cuando el apoyo pasó a
+   pagarse por transferencia: «tu correo» y «tu CLABE» no son más datos de
+   identidad, son otra cosa, y sin un rótulo que lo diga el trabajador llega al
+   campo de CLABE preguntándose por qué se la piden. Esa pregunta sin contestar
+   es de las pocas que hacen cerrar la página.
+   ============================================================ */
+
+.form-section {
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.form-section .label { color: var(--md-primary); }
+
+/* ============================================================
+   Pregunta de opción única (radio M3)
+   ============================================================ */
+
+/* `fieldset` trae borde, padding y un `min-width:auto` que rompe flex. */
+.field-group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* La pregunta se lee, no se etiqueta: va a 16px como el texto del cuerpo, no a
+   los 12px de la etiqueta flotante de un campo. */
+.field-question {
+  padding: 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--md-on-surface);
+}
+.field-group .field-support { padding-top: 0; }
+
+.choices { display: flex; flex-direction: column; gap: 8px; }
+
+/* Apiladas y a ancho completo, no lado a lado: el objetivo táctil es toda la
+   fila. Quien contesta esto trae un celular en una mano y a veces guantes. */
+.choice {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+/* El radio nativo se conserva —sigue siendo el control real para el teclado y
+   el lector de pantalla— pero se vuelve invisible y se dibuja encima: el
+   círculo de M3 lo pinta `.choice-body::before`. Sin `:has()`, que es Chrome
+   105 y quedaría fuera del piso de esta página. */
+.choice > input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.choice-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 12px 16px;
+  border: 1px solid var(--md-outline);
+  border-radius: var(--shape-md);
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--md-on-surface);
+  transition: border-color 120ms var(--ease), background-color 120ms var(--ease);
+}
+
+/* El círculo del radio, dibujado a la izquierda del texto. */
+.choice-body::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--md-on-surface-variant);
+  border-radius: 50%;
+  transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+
+.choice > input:checked ~ .choice-body {
+  border-color: var(--md-primary);
+  border-width: 2px;
+  /* Compensa el borde de 2px para que el texto no salte al elegir */
+  padding: 11px 15px;
+  background: var(--md-primary-container);
+  /* El par de M3: sobre `primary-container` va `on-primary-container`. Dejar
+     `on-surface` daría un contraste que M3 no garantiza. */
+  color: var(--md-on-primary-container);
+}
+.choice > input:checked ~ .choice-body::before {
+  border-color: var(--md-primary);
+  /* El punto interior de M3, sin un nodo extra */
+  box-shadow: inset 0 0 0 4px var(--md-primary);
+}
+
+.choice > input:focus-visible ~ .choice-body {
+  outline: 2px solid var(--md-primary);
+  outline-offset: 2px;
+}
+.choice > input:active ~ .choice-body { background: var(--md-surface-highest); }
+.choice > input:checked:active ~ .choice-body { background: var(--md-primary-container); }
+
+.field-group.is-error .choice-body { border-color: var(--md-error); }
+.field-group.is-error .field-support { color: var(--md-error); font-weight: 500; }
+
+/* ============================================================
    Botones M3
    ============================================================ */
 
