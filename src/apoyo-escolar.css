@@ -194,6 +194,15 @@ img, svg { display: block; max-width: 100%; }
    pertenece a ese grupo, no es un bloque aparte. */
 #view-inicio > #inicio-intro + #panel-mecanica { margin-top: 16px; }
 
+/* «Qué te dan» y «qué necesitas» son las dos mitades de la misma respuesta a
+   «¿me conviene entrar aquí?»: van juntas, antes del salto a las acciones. */
+#view-inicio > #panel-mecanica + #panel-tener { margin-top: 16px; }
+
+/* En la pantalla de cierre, el título y su explicación son un grupo; la salida
+   para quien YA se registró es la zona de acción. */
+#view-cerrado > #btn-cerrado-mi-registro { margin-top: 32px; }
+#view-cerrado > #btn-cerrado-buscar { margin-top: 16px; }
+
 /* Aquí termina el contexto y empiezan las dos opciones. Es el salto más
    grande de la pantalla. Especificidad de 2 ids para ganarle a la regla por
    defecto sin depender del orden del archivo. */
@@ -208,6 +217,13 @@ img, svg { display: block; max-width: 100%; }
    rompe el ritmo sin dejar rastro de dónde. */
 .stack { display: flex; flex-direction: column; gap: 16px; }
 .stack-sm { display: flex; flex-direction: column; gap: 12px; }
+
+/* Sube un elemento al principio de su pila sin reordenar el HTML. Lo usa la
+   bifurcación de inicio: cuando este teléfono ya tiene un registro, continuar
+   pasa a ser la acción principal y va arriba. Es `order` en una clase y no en
+   un `style=` inline por la misma razón que los márgenes — lo inline gana
+   siempre y no deja rastro de dónde vino. */
+.stack > .is-first { order: -1; }
 
 /* Dentro de un paso, cada bloque es un grupo distinto. */
 #step-1, #step-2, #step-3 { display: flex; flex-direction: column; gap: 24px; }
@@ -339,7 +355,23 @@ img, svg { display: block; max-width: 100%; }
   letter-spacing: 0.01em;
   transition: background 120ms var(--ease);
 }
+/* `disabled` de verdad se reserva para «ya estoy trabajando en tu toque»
+   (mientras sube, mientras guarda): ahí bloquear es correcto porque el sistema
+   está ocupado. */
 .btn[disabled] { opacity: 0.5; pointer-events: none; }
+
+/* ── «Todavía no» ≠ «no funciono» ──
+   El botón de reenviar salía con `disabled`: atenuado, sordo al toque y sin
+   state layer. Para quien no domina un celular, un botón grande que dice lo
+   que quiere hacer y no responde al tocarlo no se lee «me falta algo», se lee
+   «se trabó». Y la explicación vivía DEBAJO, fuera de pantalla en un teléfono
+   chico. Aquí el botón sigue vivo: acusa el toque y contesta por qué todavía
+   no —y lleva al papel que lo está bloqueando. */
+.btn.is-locked {
+  background: var(--md-surface-highest);
+  color: var(--md-on-surface-variant);
+  border: none;
+}
 
 /* ── State layer M3 ──
    Así acusa recibo Material de un toque: una capa del color de CONTENIDO sobre
@@ -427,10 +459,42 @@ img, svg { display: block; max-width: 100%; }
   display: flex; align-items: center; justify-content: center;
   background: var(--md-primary-container);
   color: var(--md-on-primary-container);
+  overflow: hidden;
 }
+
+/* ── Ver lo que estás mandando ──
+   El trabajador no tenía forma de comprobar QUÉ archivo mandó. Una foto
+   movida, el papel del otro hijo o una captura de la pantalla equivocada se
+   veían exactamente igual que la correcta —un renglón verde— y el error sólo
+   aparecía días después, en el rechazo de RH. La miniatura sale de su propio
+   archivo (`URL.createObjectURL`), sin pedirle nada al backend, y le deja
+   corregir en el momento en que todavía tiene el papel en la mano.
+   Vive mientras la página esté abierta; al recargar vuelve el ícono. */
+.upload-avatar.has-thumb { background: var(--md-surface-highest); }
+.upload-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* El estado del papel manda sobre la miniatura: un fondo verde o rojo detrás
+   de la foto es lo que hace legible el renglón de un vistazo. */
+.upload.is-done .upload-avatar.has-thumb,
+.upload.is-rejected .upload-avatar.has-thumb { background: var(--md-surface-lowest); }
 .upload-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .upload-text b { font-size: 16px; line-height: 22px; font-weight: 500; }
 .upload-text span { font-size: 12px; line-height: 16px; color: var(--md-on-surface-variant); }
+.upload-text span:empty { display: none; }
+
+/* La llamada a la acción se lee como acción: color de acento y algo más de
+   cuerpo que la descripción de arriba. Es la línea que le dice a alguien que
+   no da por hecho que un recuadro se toca, que ese recuadro se toca. */
+.upload-cta {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--md-primary);
+  margin-top: 2px;
+}
+.upload.is-done .upload-cta { color: var(--md-on-success-container); opacity: 0.9; }
+.upload.is-missing .upload-cta { color: var(--md-on-warning-container); }
+.upload.is-rejected .upload-cta { color: var(--md-on-error-container); }
 
 .upload.is-done {
   border-color: var(--md-success);
@@ -465,7 +529,41 @@ img, svg { display: block; max-width: 100%; }
    no se recorta ni se aprieta a 12px como el texto de ayuda normal. */
 .upload.is-rejected .upload-text span { font-size: 13px; line-height: 18px; }
 
-.upload.is-busy { opacity: 0.6; pointer-events: none; }
+/* ── Subiendo ──
+   La opacidad al 0.6 era toda la señal de que algo estaba pasando, y con la
+   red de una planta entre el toque y la respuesta pasan de cinco a veinte
+   segundos. Un renglón apagado y quieto durante veinte segundos se lee como
+   «se trabó», y lo que sigue es recargar la página a media subida. La barra
+   indeterminada de M3 es movimiento: dice «sigo trabajando» sin prometer
+   cuánto falta, que es justo lo que no se puede saber. */
+.upload.is-busy { pointer-events: none; }
+.upload.is-busy::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40%;
+  height: 3px;
+  background: var(--md-primary);
+  border-radius: 3px;
+  animation: barra 1200ms var(--ease) infinite;
+}
+@keyframes barra {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Sin animación, la barra al menos existe: quieta comunica menos, pero
+     comunica más que nada. */
+  .upload.is-busy::before { animation: none; width: 100%; opacity: 0.5; }
+}
+
+/* El consentimiento sin marcar. Sólo el borde, no el fondo saturado del
+   rechazo: no está mal, falta — y era el único requisito del paso 2 cuya
+   ausencia se anunciaba nada más en un snackbar que se va a los seis
+   segundos, sin dejar rastro en la casilla que hay que tocar. */
+.upload.is-error { border-color: var(--md-error); border-width: 2px; }
+.upload.is-error .upload-text b { color: var(--md-on-error-container); }
 
 /* ============================================================
    Acuse
@@ -485,9 +583,11 @@ img, svg { display: block; max-width: 100%; }
 #acuse-mensaje { margin-top: 8px; }          /* pegado a su título */
 #acuse-faltantes { margin-top: 24px; }       /* bloque aparte */
 #acuse-consecuencia { margin-top: 16px; }
+#acuse-siguiente { margin-top: 24px; }       /* bloque aparte */
 .receipt > .folio { margin-top: 24px; }
 .receipt > .hint { margin-top: 12px; }       /* habla del folio de arriba */
 #btn-subir-ahora { margin-top: 24px; }       /* zona de acciones */
+#btn-ver-papeles { margin-top: 24px; }       /* idem, en el caso completo */
 #acuse-oficina { margin-top: 12px; }
 .receipt-icon {
   width: 72px; height: 72px;
@@ -543,6 +643,60 @@ img, svg { display: block; max-width: 100%; }
 .missing-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .missing-list li { font-size: 15px; line-height: 20px; display: flex; gap: 8px; }
 .missing-list li::before { content: '•'; flex: 0 0 auto; }
+
+/* 🐞 El `li` es flex para poder colocar el bullet como primer item — y eso
+   convierte en FLEX ITEM cada trozo suelto del contenido. La frase
+   «De <b>Sofía Pérez</b>: comprobante de la escuela» se partía en tres
+   columnas, con el nombre encajonado en una angosta y el resto en otra: el
+   texto más importante del acuse, el que dice qué papel falta, era el peor
+   maquetado de la página. El contenido va envuelto en un solo hijo. */
+.missing-list li > span { min-width: 0; }
+
+/* ============================================================
+   Checklist de entrada — «ten a la mano»
+   ============================================================
+
+   No es un `.panel`: no es un aviso del sistema, es la lista de cosas que la
+   persona tiene que ir a buscar antes de empezar. Se ve como una tarjeta
+   —material que se lee y se deja— y no como una franja de color que se
+   despacha con la vista. */
+.checklist {
+  width: 100%;
+  text-align: left;
+  background: var(--md-surface-lowest);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--shape-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.checklist ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.checklist li {
+  display: flex;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 21px;
+}
+/* Ver la nota de `.missing-list li > span`: el contenido de un `<li>` flex va
+   siempre en UN solo hijo, o la frase se maqueta en columnas. */
+.checklist li > span { min-width: 0; }
+/* Palomita dibujada en vez de bullet: la lista no enumera, confirma. */
+.checklist li::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: var(--shape-full);
+  background: var(--md-primary-container);
+  /* SVG inline como data URI: sin peticiones y sin depender de una fuente de
+     íconos que en una red de planta puede no llegar. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23154974' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px 12px;
+}
 
 .deadline { font-size: 14px; line-height: 19px; font-weight: 700; }
 

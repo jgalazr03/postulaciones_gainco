@@ -23,6 +23,10 @@ const FOLIO_KEY = 'gainco.apoyo-escolar.folio';
 const FOTO_LADO_MAX = 1600;
 const FOTO_CALIDAD = 0.75;
 
+// Mismo tope que el backend (`gcsConfig.maxFileSizeBytes`, 30 MB). Se comprueba
+// aquí para no gastar la subida entera en descubrirlo.
+const TAMANO_MAX_BYTES = 30 * 1024 * 1024;
+
 // ============================================================
 // Estado
 // ============================================================
@@ -35,6 +39,10 @@ const state = {
   hijos: [nuevoHijo()],
   solicitud: null,
   token: null,
+  // `${beneficiarioId}:${tipo}` → object URL de la imagen que el trabajador
+  // acaba de elegir, para poder mostrársela. Vive sólo en memoria: el backend
+  // no devuelve los archivos al público a propósito.
+  previews: new Map(),
 };
 
 function nuevoHijo() {
@@ -80,6 +88,10 @@ function leerSesion() {
 function setView(id) {
   VISTAS.forEach((v) => hide(document.getElementById(v)));
   show(document.getElementById(id));
+  // Un aviso pertenece a la pantalla donde se produjo. Sin esto, el snackbar
+  // del paso 2 («marca la casilla…») seguía flotando encima de la lista de
+  // papeles del paso 3, tapándola y hablando de algo que ya no existía.
+  cerrarSnackbar();
   // `behavior: 'instant'` sólo es válido desde Chrome 97; antes, el valor
   // inválido invalida el objeto entero y el scroll no ocurre. `auto` es el
   // mismo comportamiento (salto sin animar) y existe desde siempre.
@@ -93,6 +105,31 @@ function snackbar(mensaje) {
   show(el);
   clearTimeout(snackTimer);
   snackTimer = setTimeout(() => hide(el), 6000);
+}
+
+function cerrarSnackbar() {
+  clearTimeout(snackTimer);
+  hide($('#snackbar'));
+}
+
+/**
+ * Lleva la pantalla al primer campo que quedó mal y lo abre.
+ *
+ * 🐞 Antes no existía: validar sólo pintaba los campos de rojo. En un teléfono
+ * de 360×740 el botón «Continuar» está al fondo y el primer error queda ARRIBA,
+ * fuera de la vista — así que al tocar el botón la pantalla no cambiaba en nada
+ * que el trabajador pudiera ver. El comportamiento que eso produce es tocar dos
+ * y tres veces y cerrar la página, y es indistinguible de una app rota.
+ *
+ * `focus()` va después del scroll y sólo en campos de texto: en un `select`
+ * abriría la lista de opciones encima de la explicación que acaba de aparecer.
+ */
+function enfocarPrimerError(root = document) {
+  const campo = $('.field.is-error', root);
+  if (!campo) return;
+  campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const input = $('input', campo);
+  if (input) setTimeout(() => input.focus({ preventScroll: true }), 300);
 }
 
 function marcarError(fieldEl, mensaje) {
@@ -279,6 +316,16 @@ function renderHijos() {
       const label = input.parentElement.querySelector('.field-label');
       if (label) label.setAttribute('for', input.id);
 
+      // Tope duro en el selector de fecha del sistema. El error más fácil de
+      // cometer aquí es el año: el calendario de Android abre en el actual y
+      // hay que retroceder diez o quince, así que un «2026» en lugar de «2016»
+      // no es descuido, es el camino de menor esfuerzo. La cota la pone el
+      // backend (el cierre del programa), no el reloj del celular, que en
+      // estos teléfonos va desfasado con más frecuencia de la que uno espera.
+      if (campo === 'fecha_nacimiento' && state.programa?.cierre) {
+        input.max = state.programa.cierre;
+      }
+
       input.addEventListener('input', () => {
         state.hijos[i][campo] = input.value;
         limpiarError(input.closest('.field'));
@@ -313,7 +360,13 @@ function validarPaso2() {
     } else {
       const edad = edadEnAnios(hijo.fecha_nacimiento);
       const tope = state.programa?.config?.edad_maxima ?? 25;
-      if (edad !== null && edad > tope) {
+      if (edad !== null && edad < 0) {
+        // Un año tecleado de más pasaba sin ruido y llegaba así al censo. El
+        // mensaje nombra el año porque es el dígito que se equivocó, no la
+        // fecha entera.
+        marcarError(campo('fecha_nacimiento'), 'Revisa el año: esa fecha todavía no llega.');
+        ok = false;
+      } else if (edad !== null && edad > tope) {
         marcarError(campo('fecha_nacimiento'), `El apoyo llega hasta los ${tope} años.`);
         ok = false;
       }
@@ -443,13 +496,38 @@ async function subirDocumento(file, tipo, beneficiarioId, uploadEl) {
   const ayudaOriginal = ayuda.textContent;
   ayuda.textContent = 'Subiendo…';
 
+  // La llamada a la acción se calla mientras sube: el renglón no acepta toques
+  // (`is-busy` corta `pointer-events`) y seguir diciendo «toca para…» es
+  // pedirle algo que no va a funcionar.
+  const cta = $('[data-cta]', uploadEl);
+  const ctaOriginal = cta?.textContent || '';
+  if (cta) cta.textContent = '';
+
+  // Se le enseña la foto ANTES de que termine de subir, no después: es el
+  // instante en que todavía tiene el papel enfrente y puede repetirla si salió
+  // movida. Enseñársela al final sería enseñársela cuando ya se fue.
+  pintarPreview(uploadEl, recordarPreview(beneficiarioId, tipo, file));
+
   // El contenedor se deriva del DOM, no se nombra: es la única fuente que no
   // puede desincronizarse de dónde está mirando el trabajador.
   const contenedor = uploadEl.closest('[data-docs-lista]');
   const contexto = contenedor?.dataset.docsLista;
+  // Se lee ANTES de subir: sirve para distinguir «acabo de completar» de
+  // «vine a cambiar uno que ya estaba», dos cosas que terminan en la misma
+  // pantalla y merecen distinto aviso.
+  const yaEstabaCompleto = Boolean(state.solicitud?.completo);
 
   try {
     const comprimido = await comprimirImagen(file);
+
+    // Las fotos ya salen de la compresión en cientos de kB; lo que puede pasar
+    // de aquí es un PDF escaneado a máxima calidad. El backend lo corta en 30
+    // MB, pero con la red de una planta eso es esperar la subida completa para
+    // recibir un error de multer que no le dice nada a nadie.
+    if (comprimido.size > TAMANO_MAX_BYTES) {
+      throw new Error('Ese archivo pesa demasiado. Tómale una foto en vez de mandar el archivo.');
+    }
+
     const formData = new FormData();
     formData.append('archivo', comprimido, comprimido.name);
     formData.append('tipo', tipo);
@@ -474,12 +552,23 @@ async function subirDocumento(file, tipo, beneficiarioId, uploadEl) {
         snackbar(state.solicitud.puede_reenviar
           ? 'Guardada. Ya sólo falta tocar «Ya lo corregí, enviar de nuevo».'
           : 'Guardada. Todavía te falta cambiar otro papel.');
+      } else if (yaEstabaCompleto) {
+        // Vino desde el acuse verde a cambiar un papel que ya estaba. Al
+        // terminar vuelve solo al acuse —la pantalla la decide el estado, no
+        // el camino—, así que el aviso es lo que explica el salto.
+        snackbar('Listo, ya la cambiamos.');
       }
       mostrarSolicitud();
     }
   } catch (err) {
+    // La miniatura se retira con el archivo que no llegó: dejarla afirmaría
+    // en pantalla que ese papel ya está mandado. Repintar restaura también el
+    // ícono, que `pintarPreview` había sustituido.
+    recordarPreview(beneficiarioId, tipo, null);
     snackbar(err.message);
     ayuda.textContent = ayudaOriginal;
+    if (cta) cta.textContent = ctaOriginal;
+    if (contenedor) renderDocs(contenedor);
   } finally {
     // El nodo puede haber sido reemplazado por el repintado; quitar la clase
     // de un huérfano es inocuo y cubre el camino de error, donde sigue vivo.
@@ -491,6 +580,45 @@ async function subirDocumento(file, tipo, beneficiarioId, uploadEl) {
 function requeridos() {
   const docs = state.programa?.config?.documentos || [];
   return docs.filter((d) => d.requerido !== false);
+}
+
+/**
+ * Guarda una miniatura del archivo que el trabajador acaba de elegir.
+ *
+ * Es lo único que le permite comprobar QUÉ mandó. Sin esto, una foto movida,
+ * el papel del otro hijo o una captura equivocada se veían idénticas a la
+ * correcta —un renglón verde— y el error aparecía días después, en el rechazo.
+ *
+ * El object URL anterior se revoca siempre: cada foto retiene su bitmap
+ * completo en memoria, y en un teléfono de 2 GB con seis papeles reemplazados
+ * eso es lo que hace que la pestaña se muera a la mitad del trámite.
+ */
+function recordarPreview(beneficiarioId, tipo, file) {
+  const clave = `${beneficiarioId}:${tipo}`;
+  const anterior = state.previews.get(clave);
+  if (anterior) URL.revokeObjectURL(anterior);
+
+  if (!file || !file.type?.startsWith('image/')) {
+    state.previews.delete(clave);
+    return null;
+  }
+  const url = URL.createObjectURL(file);
+  state.previews.set(clave, url);
+  return url;
+}
+
+/** Pinta la miniatura dentro del avatar, o lo deja con su ícono. */
+function pintarPreview(label, url) {
+  const avatar = $('[data-avatar]', label);
+  if (!avatar || !url) return;
+  avatar.classList.add('has-thumb');
+  const img = document.createElement('img');
+  img.src = url;
+  // Decorativa: lo que el papel ES ya lo dice la etiqueta de al lado, y
+  // describir «foto del acta» a un lector de pantalla no agrega nada.
+  img.alt = '';
+  avatar.textContent = '';
+  avatar.append(img);
 }
 
 /**
@@ -548,14 +676,16 @@ function renderDocs(contenedor) {
       const doc = porTipo.get(req.tipo);
 
       $('[data-etiqueta]', label).textContent = req.etiqueta || req.tipo;
+      const ayuda = $('[data-ayuda]', label);
+      const cta = $('[data-cta]', label);
 
       if (doc && doc.estado === 'rechazado') {
         // ROJO, y sólo este. El color señala el archivo exacto que hay que
         // volver a tomar; el texto es el motivo que escribió RH, que es lo
         // único que le dice qué está mal.
         label.classList.add('is-rejected');
-        $('[data-ayuda]', label).textContent =
-          doc.motivo || 'No nos sirvió. Toca para mandar otra.';
+        ayuda.textContent = doc.motivo || 'No nos sirvió.';
+        cta.textContent = 'Toca para mandar otra';
         $('[data-avatar]', label).innerHTML =
           '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"/><circle cx="12" cy="16.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/></svg>';
       } else if (doc) {
@@ -563,9 +693,10 @@ function renderDocs(contenedor) {
         // «pendiente» es trabajo de la oficina, no del trabajador, y pintarlo
         // de otro color le pediría una acción que no existe.
         label.classList.add('is-done');
-        $('[data-ayuda]', label).textContent = doc.subido_por_rh
-          ? 'La subió Recursos Humanos · toca para cambiarla'
-          : 'Ya la recibimos · toca para cambiarla';
+        ayuda.textContent = doc.subido_por_rh
+          ? 'La subió Recursos Humanos'
+          : 'Ya la recibimos';
+        cta.textContent = 'Toca para cambiarla';
         $('[data-avatar]', label).innerHTML =
           '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
       } else {
@@ -579,8 +710,17 @@ function renderDocs(contenedor) {
         // es distinto — entró justamente a completar, y lo que falta es la
         // respuesta a la pregunta que trae.
         if (contexto !== 'alta') label.classList.add('is-missing');
-        $('[data-ayuda]', label).textContent = req.ayuda || 'Toca para tomar la foto';
+        ayuda.textContent = req.ayuda || '';
+        // La acción se nombra completa. Decía «toca para tomar la foto»
+        // cuando ya no hay `capture` y el selector ofrece también la galería —
+        // y para la mayoría el acta YA está en el teléfono, se la mandaron por
+        // WhatsApp. Prometer sólo la cámara le pide volver a fotografiar un
+        // papel que quizá ni tiene a la mano.
+        cta.textContent = 'Toca para tomar la foto o escogerla de tu galería';
       }
+
+      // La miniatura sobrevive al repintado, que ocurre en cada subida.
+      pintarPreview(label, state.previews.get(`${b.id}:${req.tipo}`));
 
       input.addEventListener('change', () => {
         const file = input.files?.[0];
@@ -593,6 +733,26 @@ function renderDocs(contenedor) {
 
     contenedor.append(card);
   });
+
+  // El botón del alta habla del estado real de los papeles, no de un deseo.
+  if (contexto === 'alta') actualizarBotonAlta();
+}
+
+/**
+ * «Terminar» sólo cuando hay algo terminado.
+ *
+ * El paso 3 ofrecía un único botón grande que decía «Terminar» aunque no se
+ * hubiera subido ni una foto — y llevaba a un acuse ámbar titulado «Te falta
+ * 1 paso». Es la secuencia que hace dudar de si el registro se guardó: el
+ * trabajador declaró que terminó y el sistema le contestó que no.
+ * Aquí el botón nombra lo que de verdad va a pasar al tocarlo.
+ */
+function actualizarBotonAlta() {
+  const botón = $('#btn-enviar');
+  if (!botón || !state.solicitud) return;
+  botón.textContent = state.solicitud.completo
+    ? 'Terminar'
+    : 'Guardar y subir los papeles después';
 }
 
 // ============================================================
@@ -632,8 +792,21 @@ function renderAcuse() {
     hide($('#acuse-consecuencia'));
     hide($('#btn-subir-ahora'));
     hide($('#acuse-oficina'));
+
+    // Aquí es donde nace la pregunta «¿y entonces qué me van a dar?»: es la
+    // última pantalla del trámite y, para quien entró por su link, la primera
+    // que ve. La mecánica no puede vivir sólo en el inicio.
+    show($('#acuse-siguiente'));
+
+    // La salida de vuelta a los papeles. Sólo mientras haya plazo: pasado el
+    // cierre el backend rechaza la subida, y ofrecer un botón que no puede
+    // cumplir es peor que no ofrecerlo.
+    $('#btn-ver-papeles').classList.toggle('hidden', !programaAbierto());
   } else {
-    $('#acuse-titulo').textContent = 'Te falta 1 paso';
+    // «Te falta 1 paso» encima de una lista que enumera tres papeles de dos
+    // hijos invita a contar y a que la cuenta no cuadre. Sin dígito, «un paso»
+    // se lee como «ya casi», que es lo que se quería decir.
+    $('#acuse-titulo').textContent = 'Te falta un paso';
     $('#acuse-mensaje').innerHTML =
       'Ya te apartamos, pero tu registro <b>todavía no está completo</b>.';
 
@@ -642,7 +815,10 @@ function renderAcuse() {
     (s.faltantes || []).forEach((f) => {
       const li = document.createElement('li');
       const etiquetas = f.etiquetas.join(' y ');
-      li.innerHTML = `De <b>${escapar(f.beneficiario)}</b>: ${escapar(etiquetas.toLowerCase())}`;
+      // El `<span>` no es decorativo: el `<li>` es flex para colocar el bullet,
+      // y sin él «De», el nombre y la lista de papeles se volvían tres flex
+      // items —tres columnas— en lugar de una frase.
+      li.innerHTML = `<span>De <b>${escapar(f.beneficiario)}</b>: ${escapar(etiquetas.toLowerCase())}</span>`;
       lista.append(li);
     });
 
@@ -662,6 +838,8 @@ function renderAcuse() {
     show($('#acuse-consecuencia'));
     show($('#btn-subir-ahora'));
     show($('#acuse-oficina'));
+    hide($('#acuse-siguiente'));
+    hide($('#btn-ver-papeles'));
   }
 
   setView('view-acuse');
@@ -693,6 +871,10 @@ const NOMBRES_PASO = { 1: 'Tus datos', 2: 'Tus hijos', 3: 'Papeles' };
 
 function irAPaso(n) {
   state.paso = n;
+  // Cambiar de paso es cambiar de pantalla aunque la `<section>` sea la misma,
+  // y el aviso pertenece al paso donde se produjo: el «falta marcar la casilla»
+  // del paso 2 seguía flotando sobre la lista de papeles del paso 3, tapándola.
+  cerrarSnackbar();
 
   [1, 2, 3].forEach((i) => {
     document.getElementById(`step-${i}`).classList.toggle('hidden', i !== n);
@@ -771,11 +953,19 @@ function mostrarSolicitud() {
   else renderRegreso();
 }
 
-/** Faltan papeles: la lista de lo pendiente, hijo por hijo. */
+/**
+ * La lista de papeles, hijo por hijo.
+ *
+ * Es la pantalla de trabajo del trámite y se llega a ella de dos maneras: para
+ * completar lo que falta, y —desde el acuse verde— para revisar o cambiar algo
+ * que ya se mandó. El título dice cuál de las dos es, porque «Te faltan
+ * papeles» encima de una lista entera en verde era una contradicción que
+ * mandaba al trabajador a buscar un faltante inexistente.
+ */
 function renderRegreso() {
   const s = state.solicitud;
 
-  $('#regreso-titulo').textContent = 'Te faltan papeles';
+  $('#regreso-titulo').textContent = s.completo ? 'Tus papeles' : 'Te faltan papeles';
   $('#regreso-sub').textContent = `${s.nombre} · folio ${s.folio}`;
 
   // Pasado el cierre el backend rechaza la subida (`assertProgramaAbierto`),
@@ -816,10 +1006,24 @@ function renderRechazo() {
     // `puede_reenviar` lo decide el backend con la misma regla que aplica al
     // recibir el reenvío: tenerla en dos sitios es garantizar que se separen.
     const listo = Boolean(s.puede_reenviar);
-    $('#btn-reenviar').disabled = !listo;
+    const botón = $('#btn-reenviar');
+
+    // «Todavía no» se pinta, pero NO se apaga: un botón sordo al toque, con la
+    // explicación debajo y fuera de pantalla, es indistinguible de una app
+    // rota para quien no está acostumbrado a un celular. Al tocarlo contesta
+    // por qué y lleva al papel que lo está deteniendo.
+    botón.disabled = false;
+    botón.classList.toggle('is-locked', !listo);
+
+    // `aria-disabled` sería mentir en la otra dirección: le anunciaría a un
+    // lector de pantalla que el botón no hace nada y luego el botón contesta.
+    // Lo correcto es que esté habilitado y que su descripción —la línea de
+    // abajo, la misma que lee todo el mundo— diga qué falta para usarlo.
+    botón.setAttribute('aria-describedby', 'reenviar-ayuda');
+
     $('#reenviar-ayuda').textContent = listo
       ? 'Recursos Humanos lo va a revisar otra vez.'
-      : 'El botón se activa cuando ya no quede nada marcado en rojo.';
+      : 'Primero cambia el papel marcado en rojo de arriba.';
   }
 
   setView('view-rechazo');
@@ -880,13 +1084,19 @@ async function init() {
   }
 
   if (state.programa.cierre) {
+    // El chip decía «Cierra el viernes 21 de agosto» —en futuro— encima del
+    // título «El registro ya cerró». Una contradicción en la misma pantalla
+    // deja al lector sin saber cuál de las dos creer.
     const chip = $('#chip-cierre');
-    chip.textContent = `Cierra el ${formatearFecha(state.programa.cierre)}`;
+    chip.textContent = programaAbierto()
+      ? `Cierra el ${formatearFecha(state.programa.cierre)}`
+      : `Cerró el ${formatearFecha(state.programa.cierre)}`;
     show(chip);
   }
 
   montarRescate();
   montarConsulta();
+  montarCerrado();
 
   // El token en la URL ES una credencial explícita: quien abre SU link personal
   // va directo a su trámite. Lo que ya no ocurre es el salto automático por
@@ -904,7 +1114,7 @@ async function init() {
   }
 
   if (!state.programa.abierto) {
-    setView('view-cerrado');
+    mostrarCerrado();
     return;
   }
 
@@ -918,6 +1128,33 @@ async function init() {
 }
 
 /**
+ * Programa cerrado.
+ *
+ * Cerrar el registro cierra la puerta de ENTRADA, no el expediente de quien ya
+ * pasó por ella. Antes esta pantalla era un punto final para todos: `init()`
+ * cortaba aquí y ni el token guardado en el teléfono ni el rescate por folio
+ * llegaban a montarse, así que un trabajador registrado se quedaba sin poder
+ * ver su folio, qué papeles entregó ni qué decidió RH. Y `renderRegreso` ya
+ * sabía comportarse con el programa cerrado —muestra el aviso y esconde los
+ * botones de subir—: lo único que faltaba era dejarlo llegar.
+ */
+function mostrarCerrado() {
+  const { token } = leerSesion();
+  $('#btn-cerrado-mi-registro')?.classList.toggle('hidden', !token);
+  $('#btn-cerrado-buscar')?.classList.remove('hidden');
+  setView('view-cerrado');
+}
+
+function montarCerrado() {
+  $('#btn-cerrado-mi-registro')?.addEventListener('click', async () => {
+    const { token } = leerSesion();
+    if (token) await abrirRegreso(token);
+    else setView('view-rescate');
+  });
+  $('#btn-cerrado-buscar')?.addEventListener('click', () => setView('view-rescate'));
+}
+
+/**
  * Bifurcación de entrada. Dos caminos explícitos —registrarse o volver— en vez
  * de aterrizar en un formulario largo: es una sola decisión, y hace visible el
  * regreso, que antes vivía escondido al final del paso 1.
@@ -928,8 +1165,25 @@ function montarInicio() {
   // Si este teléfono ya tiene un registro, el segundo botón deja de ser una
   // pregunta y pasa a nombrarlo. Y aparece la salida para quien NO es esa
   // persona — el caso del celular prestado.
+  //
+  // Además se invierte la jerarquía: continuar pasa a ser el botón principal
+  // y registrarse el secundario. Quien abre un teléfono que YA tiene un
+  // registro casi siempre es esa persona volviendo, y con «Registrarme» de
+  // primero lo normal era tocarlo por inercia y crear un duplicado que
+  // después RH tiene que desenredar a mano. Se invierte el énfasis, no la
+  // decisión: siguen siendo dos caminos explícitos y nadie es redirigido
+  // solo — en planta se presta el celular.
   if (folio) {
-    $('#btn-ya-registrado').textContent = `Continuar con mi registro (${folio})`;
+    const continuar = $('#btn-ya-registrado');
+    const registrarse = $('#btn-registrarme');
+
+    continuar.textContent = `Continuar con mi registro (${folio})`;
+    continuar.classList.replace('btn-outlined', 'btn-filled');
+    continuar.classList.add('is-first');
+
+    registrarse.textContent = 'Registrarme (soy otra persona)';
+    registrarse.classList.replace('btn-filled', 'btn-outlined');
+
     show($('#btn-otro-registro'));
   }
 
@@ -951,6 +1205,7 @@ function montarFormulario() {
   $('#form-datos').addEventListener('submit', (e) => {
     e.preventDefault();
     if (validarPaso1()) irAPaso(2);
+    else enfocarPrimerError($('#step-1'));
   });
 
   $('#btn-agregar-hijo').addEventListener('click', () => {
@@ -965,14 +1220,26 @@ function montarFormulario() {
 
   $('#form-hijos').addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!validarPaso2()) return;
+    if (!validarPaso2()) {
+      enfocarPrimerError($('#step-2'));
+      return;
+    }
 
+    const consentimiento = $('#consentimiento-wrap');
     if (!$('#consentimiento').checked) {
-      snackbar('Marca la casilla del aviso de privacidad para continuar.');
-      $('#consentimiento-wrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // El aviso se queda EN la casilla, no sólo en un snackbar que se
+      // desvanece: quien vuelve a la pantalla treinta segundos después ya no
+      // tiene ninguna pista de qué lo detuvo.
+      consentimiento.classList.add('is-error');
+      snackbar('Falta marcar la casilla del aviso de privacidad.');
+      consentimiento.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     crearSolicitud(e.submitter || $('#form-hijos button[type="submit"]'));
+  });
+
+  $('#consentimiento').addEventListener('change', () => {
+    $('#consentimiento-wrap').classList.remove('is-error');
   });
 
   // El paso 3 no tiene «regresar»: al llegar ahí la solicitud ya está creada y
@@ -998,7 +1265,20 @@ function montarFormulario() {
 function montarConsulta() {
   $('#btn-subir-ahora').addEventListener('click', renderRegreso);
   $('#btn-ver-acuse').addEventListener('click', renderAcuse);
-  $('#btn-reenviar').addEventListener('click', (e) => reenviar(e.currentTarget));
+  $('#btn-ver-papeles').addEventListener('click', renderRegreso);
+
+  $('#btn-reenviar').addEventListener('click', (e) => {
+    const botón = e.currentTarget;
+    if (botón.classList.contains('is-locked')) {
+      // Contestar el toque es el punto: dice qué falta y lleva el ojo al
+      // renglón rojo, en vez de dejar al trabajador tocando un botón mudo.
+      snackbar('Primero cambia el papel marcado en rojo.');
+      $('#rechazo-lista .upload.is-rejected')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    reenviar(botón);
+  });
 }
 
 function montarRescate() {

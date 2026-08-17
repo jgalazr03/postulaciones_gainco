@@ -39,6 +39,18 @@
           El plazo para registrarte al apoyo de útiles escolares terminó.
           Si tienes dudas, acércate a la oficina de Recursos Humanos.
         </p>
+
+        <!-- Quien YA se registró sigue teniendo un trámite vivo aquí: su folio,
+             qué papeles entregó y qué decidió RH. Antes esta pantalla lo dejaba
+             fuera —`init()` cortaba antes de la bifurcación— aunque su sesión
+             estuviera guardada en este mismo teléfono. Cerrar el registro cierra
+             la puerta de ENTRADA, no el expediente de quien ya pasó. -->
+        <button type="button" class="btn btn-filled hidden" id="btn-cerrado-mi-registro">
+          Ver mi registro
+        </button>
+        <button type="button" class="btn btn-outlined hidden" id="btn-cerrado-buscar">
+          Buscar mi registro con folio
+        </button>
       </section>
 
       <!-- ══ INICIO — la bifurcación ══════════════════════
@@ -57,6 +69,29 @@
           <p class="body" style="font-size:15px;line-height:21px">
             El apoyo es un <b>crédito para comprar útiles en una papelería</b>.
             No es dinero en efectivo ni depósito.
+          </p>
+        </div>
+
+        <!-- Lo que más gente pierde no es el formulario: es descubrir A MITAD
+             que le hacen falta fotos que no tiene a la mano. Decirlo ANTES de
+             empezar convierte un abandono en «ahorita vuelvo con las fotos»,
+             y de paso deja claro que la foto sirve igual que el papel: la
+             mayoría ya tiene el acta en el teléfono porque se la mandaron por
+             WhatsApp, y no lo sabe. -->
+        <div class="checklist" id="panel-tener">
+          <div class="label">Ten a la mano, de cada hijo:</div>
+          <!-- El texto va envuelto en un `<span>`: el `<li>` es flex para
+               colocar la palomita, y sin envoltura cada trozo suelto —«Un», el
+               `<b>`, el resto— se vuelve su propia columna y la frase se parte
+               en tres. Es el mismo error que ya se había cometido en
+               `.missing-list`. -->
+          <ul>
+            <li><span>Su <b>acta de nacimiento</b></span></li>
+            <li><span>Un <b>comprobante de la escuela</b>: boleta, credencial, recibo de inscripción o carta</span></li>
+          </ul>
+          <p class="body-sm">
+            Sirve la foto que ya tengas en el teléfono. No necesitas llevar los
+            papeles a ningún lado.
           </p>
         </div>
 
@@ -234,6 +269,23 @@
             Sin esos papeles no te podemos dar el apoyo.
           </p>
 
+          <!-- «Ya no tienes que hacer nada más» y punto final dejaba al
+               trabajador con la única pregunta que le importa sin contestar:
+               entonces ¿qué me van a dar, y cuándo? La mecánica sólo se
+               explicaba en la pantalla de inicio, que quien llega por su link
+               `?t=` NUNCA vio. Aquí se repite, que es donde la pregunta nace. -->
+          <div class="panel panel-info hidden" id="acuse-siguiente">
+            <div class="label">Qué sigue</div>
+            <p class="body" style="font-size:15px;line-height:21px">
+              Recursos Humanos revisa los papeles y te avisa por WhatsApp
+              <b>al número que registraste</b> cuándo y dónde recoger tu vale.
+            </p>
+            <p class="body" style="font-size:15px;line-height:21px">
+              El apoyo es un <b>crédito para comprar útiles en una papelería</b>,
+              no dinero en efectivo.
+            </p>
+          </div>
+
           <div class="folio">
             <span>Tu folio</span>
             <b id="acuse-folio">—</b>
@@ -247,6 +299,17 @@
           <button type="button" class="btn btn-filled hidden" id="btn-subir-ahora">
             Subir las fotos ahora
           </button>
+
+          <!-- El acuse verde era una puerta sin retorno: se ocultaba el único
+               botón que llevaba a los papeles, así que quien subió la foto
+               equivocada —la del hijo cambiado, o una que salió borrosa y él
+               mismo lo notó— no tenía NINGÚN camino para corregirla. Tenía que
+               esperar a que RH la rechazara para que le devolvieran la entrada.
+               Ese viaje en balde es justo el que este módulo vino a evitar. -->
+          <button type="button" class="btn btn-outlined hidden" id="btn-ver-papeles">
+            Ver o cambiar mis papeles
+          </button>
+
           <p class="body-sm hidden" id="acuse-oficina">
             También puedes llevar los papeles a la oficina de Recursos Humanos.
           </p>
@@ -416,15 +479,28 @@
 
   <template id="tpl-upload">
     <label class="upload" data-upload>
+      <!-- Foto con «+», no una cámara: desde que se quitó `capture`, este
+           renglón abre cámara, galería y archivos, y el ícono de cámara
+           prometía sólo el primero. -->
       <span class="upload-avatar" data-avatar>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>
-          <circle cx="12" cy="13" r="3.4"/>
+          <path d="M20.5 13.5V6a2 2 0 0 0-2-2h-13a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8"/>
+          <circle cx="9" cy="9.5" r="1.6"/>
+          <path d="M3.8 16.5 8 12.4l3.4 3.3"/>
+          <path d="M18.5 16.5v5M16 19h5"/>
         </svg>
       </span>
+      <!-- Tres renglones y no dos, porque son tres preguntas distintas:
+           QUÉ papel es (la etiqueta), QUÉ sirve como ese papel o qué le pasó
+           (la ayuda / el motivo del rechazo) y QUÉ tiene que hacer con el dedo
+           (la llamada a la acción). Antes la ayuda ocupaba el lugar de la
+           acción y se comían entre sí: el «Comprobante de la escuela» listaba
+           «boleta, credencial, recibo o carta» y en ningún lado decía que ese
+           renglón se toca. -->
       <span class="upload-text">
         <b data-etiqueta></b>
         <span data-ayuda></span>
+        <span class="upload-cta" data-cta></span>
       </span>
       <!-- SIN `capture`: ese atributo abre la cámara DIRECTO y deja fuera el
            carrete, y lo normal aquí es que el acta ya esté en el teléfono
