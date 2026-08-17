@@ -89,7 +89,8 @@
             <span id="progress-paso">Paso 1 de 3</span>
             <em id="progress-nombre">Tus datos</em>
           </div>
-          <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" id="progress-track">
+          <div class="progress-track" role="progressbar" aria-label="Avance del registro"
+               aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" id="progress-track">
             <span class="on"></span><span></span><span></span>
           </div>
         </div>
@@ -97,6 +98,16 @@
         <!-- ── Paso 1: datos del trabajador ── -->
         <div id="step-1">
           <form id="form-datos" class="stack" novalidate>
+            <!-- Honeypot anti-bot. El backend YA responde 201 falso sin escribir
+                 nada cuando este campo viene con valor (`createSolicitudPublicSchema`
+                 + el handler), pero el campo no existía en la página: la defensa
+                 estaba escrita, documentada y nunca se disparaba.
+                 Fuera de pantalla y no `display:none`, que algunos bots detectan;
+                 `aria-hidden` + `tabindex="-1"` para que ningún lector de pantalla
+                 se lo ofrezca a una persona. -->
+            <input type="text" id="website" name="website" class="honeypot"
+                   tabindex="-1" autocomplete="off" aria-hidden="true" />
+
             <div class="field" id="f-nombre">
               <input type="text" id="nombre" name="nombre" autocomplete="name"
                      placeholder=" " enterkeyhint="next" />
@@ -192,7 +203,7 @@
             enviarlos después con tu folio.
           </p>
 
-          <div id="docs-lista" class="stack"></div>
+          <div id="docs-lista" class="stack" data-docs-lista="alta"></div>
 
           <button type="button" class="btn btn-filled" id="btn-enviar">
             Terminar
@@ -246,7 +257,66 @@
       <section id="view-regreso" class="hidden">
         <h1 class="headline" id="regreso-titulo">Te faltan papeles</h1>
         <p class="body-sm" id="regreso-sub"></p>
-        <div id="regreso-lista" class="stack"></div>
+
+        <!-- Pasado el cierre, los botones de subir siguen viéndose normales
+             pero el backend rechaza la subida. Decirlo ANTES vale más que un
+             error después de esperar a que suba la foto. -->
+        <div class="panel panel-warn hidden" id="regreso-cerrado">
+          <div class="label">El plazo para subir papeles ya cerró</div>
+          <p class="body" style="font-size:15px;line-height:21px">
+            Todavía puedes llevarlos a la oficina de Recursos Humanos.
+          </p>
+        </div>
+
+        <div id="regreso-lista" class="stack" data-docs-lista="regreso"></div>
+
+        <!-- Sin esto, quien llega aquí por su link no tiene forma de volver a
+             ver su folio — y el folio es lo que necesita para todo lo demás. -->
+        <button type="button" class="btn btn-text" id="btn-ver-acuse">
+          Ver mi folio
+        </button>
+      </section>
+
+      <!-- ══ RECHAZO ══════════════════════════════════════
+           RH revisó y no aceptó los papeles. Antes esta pantalla no existía:
+           un registro rechazado con los documentos completos caía en el acuse
+           VERDE y le decía al trabajador «ya no tienes que hacer nada más».
+           El estado y el motivo ya viajaban desde el backend; nadie los leía. -->
+      <section id="view-rechazo" class="hidden">
+        <div class="receipt">
+          <div class="receipt-icon error">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>
+            </svg>
+          </div>
+
+          <h1 class="headline">Tus papeles no se pudieron aceptar</h1>
+          <p class="body" id="rechazo-sub"></p>
+
+          <div class="panel panel-error" id="rechazo-panel">
+            <div class="label">Esto nos dijo Recursos Humanos:</div>
+            <p class="body" style="font-size:15px;line-height:21px" id="rechazo-motivo"></p>
+          </div>
+
+          <!-- Mientras el programa siga abierto, rechazar no es el final: al
+               volver a tomar la foto, la nueva reemplaza a la anterior. -->
+          <div class="stack hidden" id="rechazo-accion">
+            <p class="body-sm" id="rechazo-instruccion">
+              Vuelve a tomar la foto del papel que te indican. La nueva sustituye
+              a la que enviaste antes.
+            </p>
+            <div id="rechazo-lista" class="stack" data-docs-lista="rechazo"></div>
+          </div>
+
+          <p class="body-sm" id="rechazo-oficina">
+            Si tienes dudas, acércate a la oficina de Recursos Humanos con tu folio.
+          </p>
+
+          <div class="folio">
+            <span>Tu folio</span>
+            <b id="rechazo-folio">—</b>
+          </div>
+        </div>
       </section>
 
       <!-- ══ RESCATE (perdí mi link) ══════════════════════ -->

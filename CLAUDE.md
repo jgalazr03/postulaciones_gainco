@@ -105,6 +105,26 @@ El sitio no usa `pushState` ni hash routing, así que el modo SPA nunca hizo fal
 - **`capture="environment"`** para que el botón abra la cámara, no un explorador de archivos.
 - **Borrador en `localStorage`** mientras captura, y el token guardado después: quien ya se registró desde ese celular vuelve a SU trámite, no a uno nuevo.
 - **El backend nunca confirma si un número de acceso existe.** Si lo hiciera, el endpoint sería un oráculo para enumerar quién trabaja en GAINCO. El trabajador escribe texto libre y RH concilia después contra la nómina.
+- **`mostrarSolicitud()` es la ÚNICA que decide qué pantalla toca.** Ninguna vista se elige a mano. Antes cada camino —link `?t=`, rescate por folio, fin de una subida— la escogía por su cuenta, y divergieron: una solicitud rechazada con los papeles completos entraba por la rama `completo` y mostraba el acuse VERDE («ya no tienes que hacer nada más») de un apoyo que no iba a llegar. El orden manda: **lo que RH decidió pesa más que el conteo de papeles** (`rechazada` → `completo` → faltantes).
+- **Después de subir un documento, se reevalúa la pantalla, no se repinta un contenedor.** `subirDocumento` deriva su contexto del DOM (`data-docs-lista` = `alta` | `regreso` | `rechazo`), nunca de un id fijo. El bug que lo motivó: repintaba `#docs-lista` siempre, así que quien subía desde la pantalla de regreso repintaba un contenedor OCULTO y su renglón se quedaba en «Subiendo…» hasta recargar. En `alta` sólo repinta (el trabajador sigue en su flujo y toca «Terminar» él); en los otros dos delega en `mostrarSolicitud()`.
+- **Un papel entregado no es un papel aprobado.** En la pantalla de rechazo los documentos presentes van en NEUTRO (`is-sent`, «Ya la mandaste»), nunca en el verde de `is-done`, y no se muestra el chip «Completo»: verde significa «esto ya quedó» y contradiría el párrafo donde RH explica que no sirvió. Es la regla de suite «un estado, un significado».
+- **`is-missing` (ámbar) sólo al VOLVER, no durante el alta.** En el paso 3 todos los papeles están pendientes por definición; teñir la pantalla entera convertiría el estado normal en alarma. Al volver sí, porque entró justamente a completar.
+
+### Compatibilidad con teléfonos de gama baja
+
+Es un requisito, no una aspiración: quien llena esto es un trabajador de planta. Lo que fija el piso NO es la versión de Android sino la de Chrome, que en Android se actualiza solo por Play Store (un Android 8 de 2017 con Play Services corre Chrome actual).
+
+| Lo que usa la página | Piso |
+|---|---|
+| `gap` en flexbox (19 usos) | **Chrome 84** ← el más alto |
+| `:focus-visible` | Chrome 86 (degrada a sin outline) |
+| `?.` / `??` (target `es2020`) | Chrome 80 |
+| `createImageBitmap` | Chrome 50, y va dentro de `try/catch` que cae al archivo original |
+| `env(safe-area-inset-*)` | degrada a 0 |
+
+Reglas al tocar esta página: **nada de `inset:`** (Chrome 87), `:has()`, `oklch()` ni `@layer`; y `scrollTo({behavior:'instant'})` es Chrome 97 — usar `'auto'`, que hace lo mismo. El presupuesto actual es **~9.4 kB gzip** (CSS + JS propios); cualquier cosa que lo multiplique tiene que justificarse contra los segundos de pantalla en blanco que cuesta en la red de una planta.
+
+**No importar `@material/web`.** Se evaluó. Está en modo mantenimiento desde junio de 2024 (Google reasignó a sus ingenieros a Wiz; sin features nuevas, sin M3 Expressive) — mala apuesta para una página pensada para reusarse cada ciclo escolar. Además trae Lit como runtime, y sus custom elements no tienen estilo hasta que el JS los define: en gama baja esa ventana se ve, mientras que hoy el CSS pinta desde el primer frame y un fallo de JS aún deja `<input>` usables. Y no compraría fidelidad que no esté ya: el esquema lo generó el algoritmo oficial de Google y las medidas son las specs M3. Lo que sí faltaba de M3 era *comportamiento* —el state layer al tocar, el ámbar de lo pendiente— y eso se cableó en CSS, sin peso.
 
 ## Endpoints públicos del backend que consume
 

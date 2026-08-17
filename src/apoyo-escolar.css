@@ -110,6 +110,18 @@ img, svg { display: block; max-width: 100%; }
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
+/* Honeypot: fuera de pantalla en vez de `display:none`, que los bots que
+   valen algo detectan. No es `.sr-only` a propósito — aquello SÍ lo anuncia
+   un lector de pantalla, y una persona ciega lo llenaría y se autobloquearía. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ============================================================
    Estructura
    ============================================================ */
@@ -311,6 +323,8 @@ img, svg { display: block; max-width: 100%; }
    ============================================================ */
 
 .btn {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -323,10 +337,31 @@ img, svg { display: block; max-width: 100%; }
   font-weight: 600;
   line-height: 20px;
   letter-spacing: 0.01em;
-  transition: filter 120ms var(--ease), background 120ms var(--ease);
+  transition: background 120ms var(--ease);
 }
-.btn:active { filter: brightness(0.94); }
 .btn[disabled] { opacity: 0.5; pointer-events: none; }
+
+/* ── State layer M3 ──
+   Así acusa recibo Material de un toque: una capa del color de CONTENIDO sobre
+   el contenedor, al 10% cuando se presiona. Antes se usaba
+   `filter: brightness(.94)`, que apaga el botón entero —incluida la letra— y
+   sobre un azul saturado se lee como «se deshabilitó», no como «te oí».
+   La diferencia importa en un celular de gama baja, donde entre el toque y la
+   respuesta de la red pasan segundos: es la única señal de que el toque contó. */
+.btn::after,
+.upload::after {
+  content: '';
+  position: absolute;
+  /* `top/right/bottom/left` en vez de `inset`, que pide Chrome 87: estos
+     teléfonos son la razón de ser de la página. */
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+  pointer-events: none;
+}
+.btn:active::after,
+.upload:active::after { opacity: 0.1; }
 
 .btn-filled { background: var(--md-primary); color: var(--md-on-primary); }
 .btn-outlined { border: 1px solid var(--md-outline); color: var(--md-primary); background: transparent; }
@@ -371,6 +406,8 @@ img, svg { display: block; max-width: 100%; }
    ============================================================ */
 
 .upload {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -411,6 +448,22 @@ img, svg { display: block; max-width: 100%; }
 .upload.is-missing .upload-avatar { background: var(--md-warning); color: #fff; }
 .upload.is-missing .upload-text span { color: var(--md-on-warning-container); opacity: 0.85; }
 
+/* Entregado pero SIN dar por bueno.
+   Es la variante de la pantalla de rechazo: ahí el verde mentiría, porque RH
+   acaba de decir que ese papel no sirve. El documento está —se puede
+   reemplazar— pero no está aprobado, y el color no puede afirmar lo contrario.
+   La regla de la suite es «un estado, un significado»; verde ya significa
+   «esto ya quedó». */
+.upload.is-sent {
+  border-color: var(--md-outline-variant);
+  background: var(--md-surface-container);
+  color: var(--md-on-surface-variant);
+}
+.upload.is-sent .upload-avatar {
+  background: var(--md-surface-highest);
+  color: var(--md-on-surface-variant);
+}
+
 .upload.is-busy { opacity: 0.6; pointer-events: none; }
 
 /* ============================================================
@@ -443,6 +496,25 @@ img, svg { display: block; max-width: 100%; }
 }
 .receipt-icon.warn { background: var(--md-warning-container); color: var(--md-on-warning-container); }
 .receipt-icon.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
+.receipt-icon.error { background: var(--md-error-container); color: var(--md-on-error-container); }
+
+/* ── Rechazo ──
+   Mismo ritmo que el acuse y por la misma razón: agrupado por relación y
+   declarado por id, para que ocultar un bloque (el programa ya cerró, no hay
+   nada que volver a subir) no descuadre al siguiente. */
+#rechazo-sub { margin-top: 8px; }        /* pegado a su título */
+#rechazo-panel { margin-top: 24px; }     /* bloque aparte */
+#rechazo-accion { margin-top: 32px; }    /* zona de acción */
+#rechazo-oficina { margin-top: 16px; }
+
+/* `.receipt` centra sus hijos, así que un bloque que debe ocupar el ancho
+   completo tiene que pedirlo — y su texto vuelve a la izquierda, porque una
+   instrucción de varias líneas centrada se lee peor. */
+#rechazo-accion { width: 100%; text-align: left; }
+
+/* El cierre acompaña a las tarjetas de arriba, así que sigue su alineación:
+   centrado quedaba flotando respecto a todo lo que tiene encima. */
+#rechazo-oficina { width: 100%; text-align: left; }
 
 @keyframes pop {
   from { transform: scale(0.8); opacity: 0; }

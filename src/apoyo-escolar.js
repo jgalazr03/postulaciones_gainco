@@ -52,7 +52,7 @@ const hide = (el) => el && el.classList.add('hidden');
 
 const VISTAS = [
   'view-loading', 'view-cerrado', 'view-inicio', 'view-form',
-  'view-acuse', 'view-regreso', 'view-rescate',
+  'view-acuse', 'view-regreso', 'view-rechazo', 'view-rescate',
 ];
 
 /**
@@ -80,7 +80,10 @@ function leerSesion() {
 function setView(id) {
   VISTAS.forEach((v) => hide(document.getElementById(v)));
   show(document.getElementById(id));
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  // `behavior: 'instant'` sólo es válido desde Chrome 97; antes, el valor
+  // inválido invalida el objeto entero y el scroll no ocurre. `auto` es el
+  // mismo comportamiento (salto sin animar) y existe desde siempre.
+  window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 let snackTimer = null;
@@ -358,6 +361,10 @@ async function crearSolicitud(botón) {
         cliente_id: state.datos.cliente_id || null,
         ciudad: state.datos.ciudad || null,
         consentimiento: true,
+        // El backend descarta la solicitud (201 falso, cero escritura) si este
+        // campo trae valor. Una persona nunca lo ve; sólo un bot que llena
+        // todos los inputs del DOM.
+        website: $('#website')?.value || undefined,
         beneficiarios: state.hijos.map((h) => ({
           nombre: h.nombre.trim(),
           fecha_nacimiento: h.fecha_nacimiento || null,
@@ -415,11 +422,31 @@ async function comprimirImagen(file) {
   }
 }
 
+/**
+ * Sube un documento y REEVALÚA la pantalla contra el estado nuevo.
+ *
+ * 🐞 Antes repintaba `#docs-lista` fijo, el contenedor del paso 3. Quien subía
+ * desde la pantalla de regreso —que es el camino principal: ahí llega el acuse
+ * ámbar, el botón «Ya me registré», el rescate por folio y el link `?t=`—
+ * repintaba un contenedor OCULTO, así que su renglón se quedaba en «Subiendo…»
+ * con `is-busy` (opacidad 0.6 y sin eventos) para siempre. Recargar lo
+ * arreglaba porque `abrirRegreso` sí pinta el contenedor correcto.
+ *
+ * Y aun arreglando eso quedaba el hueco de fondo: quien completaba sus papeles
+ * al volver nunca veía el acuse verde, la ÚNICA pantalla autorizada a decir
+ * «ya no tienes que hacer nada más». Por eso al terminar se delega en
+ * `mostrarSolicitud()` en vez de repintar y ya.
+ */
 async function subirDocumento(file, tipo, beneficiarioId, uploadEl) {
   uploadEl.classList.add('is-busy');
   const ayuda = $('[data-ayuda]', uploadEl);
   const ayudaOriginal = ayuda.textContent;
   ayuda.textContent = 'Subiendo…';
+
+  // El contenedor se deriva del DOM, no se nombra: es la única fuente que no
+  // puede desincronizarse de dónde está mirando el trabajador.
+  const contenedor = uploadEl.closest('[data-docs-lista]');
+  const contexto = contenedor?.dataset.docsLista;
 
   try {
     const comprimido = await comprimirImagen(file);
@@ -433,11 +460,27 @@ async function subirDocumento(file, tipo, beneficiarioId, uploadEl) {
     });
 
     state.solicitud = data;
-    renderDocs($('#docs-lista'));
+
+    if (contexto === 'alta') {
+      // Dentro del alta el trabajador sigue en su flujo: se repinta y él
+      // decide cuándo tocar «Terminar». Sacarlo de aquí le quitaría el control
+      // justo cuando todavía puede subir el papel del siguiente hijo.
+      renderDocs(contenedor);
+    } else {
+      // Subir no des-rechaza: el estado lo cambia RH, así que la pantalla
+      // vuelve a ser la del rechazo. Sin este aviso, reenviar la foto se
+      // sentiría como que no pasó nada.
+      if (contexto === 'rechazo') {
+        snackbar('Recibimos tu foto nueva. Recursos Humanos la va a revisar otra vez.');
+      }
+      mostrarSolicitud();
+    }
   } catch (err) {
     snackbar(err.message);
     ayuda.textContent = ayudaOriginal;
   } finally {
+    // El nodo puede haber sido reemplazado por el repintado; quitar la clase
+    // de un huérfano es inocuo y cubre el camino de error, donde sigue vivo.
     uploadEl.classList.remove('is-busy');
   }
 }
@@ -456,6 +499,9 @@ function renderDocs(contenedor) {
   if (!contenedor || !state.solicitud) return;
   contenedor.textContent = '';
 
+  // 'alta' | 'regreso' | 'rechazo' — cambia el énfasis de lo pendiente.
+  const contexto = contenedor.dataset.docsLista;
+
   const faltantesPorHijo = new Map(
     (state.solicitud.faltantes || []).map((f) => [f.beneficiario_id, f.tipos]),
   );
@@ -467,8 +513,22 @@ function renderDocs(contenedor) {
 
     const faltan = faltantesPorHijo.get(b.id) || [];
     const chip = $('[data-faltan]', card);
+    // El hijo que ya está completo lo dice, no sólo deja de quejarse: con
+    // varios hijos, la ausencia de aviso se confunde con «todavía no lo he
+    // revisado». Es el mismo criterio del acuse — el verde se gana.
+    //
+    // Salvo en la pantalla de rechazo: ahí «Completo» sería un desmentido del
+    // párrafo de arriba, donde RH explica que los papeles no sirvieron. Tener
+    // los archivos y que valgan son dos cosas distintas.
     if (faltan.length) {
       chip.textContent = faltan.length === 1 ? 'Falta 1' : `Faltan ${faltan.length}`;
+      chip.classList.add('chip-warn');
+      chip.classList.remove('chip-ok');
+      show(chip);
+    } else if (contexto !== 'rechazo') {
+      chip.textContent = 'Completo';
+      chip.classList.add('chip-ok');
+      chip.classList.remove('chip-warn');
       show(chip);
     }
 
@@ -483,11 +543,28 @@ function renderDocs(contenedor) {
       $('[data-etiqueta]', label).textContent = req.etiqueta || req.tipo;
 
       if (entregados.has(req.tipo)) {
-        label.classList.add('is-done');
-        $('[data-ayuda]', label).textContent = 'Ya la recibimos · toca para cambiarla';
-        $('[data-avatar]', label).innerHTML =
-          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+        // En la pantalla de rechazo el papel está entregado pero NO aprobado:
+        // pintarlo verde diría «esto ya quedó» justo debajo del texto donde RH
+        // explica que no sirve. Se muestra neutro, y sigue siendo reemplazable.
+        const rechazado = contexto === 'rechazo';
+        label.classList.add(rechazado ? 'is-sent' : 'is-done');
+        $('[data-ayuda]', label).textContent = rechazado
+          ? 'Ya la mandaste · toca para cambiarla'
+          : 'Ya la recibimos · toca para cambiarla';
+        $('[data-avatar]', label).innerHTML = rechazado
+          ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.4"/></svg>'
+          : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
       } else {
+        // `is-missing` (ámbar) existía en la hoja de estilos desde el primer
+        // día y ningún camino lo aplicaba: un papel pendiente se veía igual
+        // que uno que el trabajador ni ha mirado.
+        //
+        // Pero sólo se marca al VOLVER. Durante el alta, todos los papeles
+        // están pendientes por definición: teñir de ámbar la pantalla entera
+        // en el paso 3 convertiría el estado normal en una alarma. Al volver
+        // es distinto — entró justamente a completar, y lo que falta es la
+        // respuesta a la pregunta que trae.
+        if (contexto !== 'alta') label.classList.add('is-missing');
         $('[data-ayuda]', label).textContent = req.ayuda || 'Toca para tomar la foto';
       }
 
@@ -511,6 +588,10 @@ function renderDocs(contenedor) {
 function renderAcuse() {
   const s = state.solicitud;
   const completo = s.completo;
+  // Que RH ya lo haya revisado y aceptado es MÁS que tener los papeles
+  // completos, y el acuse lo dice: si no, un trabajador aprobado y otro cuyo
+  // expediente nadie ha abierto leen exactamente la misma pantalla.
+  const aprobada = s.estado === 'validada';
 
   $('#acuse-folio').textContent = s.folio;
 
@@ -523,10 +604,16 @@ function renderAcuse() {
 
   if (completo) {
     // Única pantalla del flujo autorizada a decir que ya no hay nada que hacer.
-    $('#acuse-titulo').textContent = 'Listo. Ya no tienes que hacer nada más.';
     const n = s.beneficiarios.length;
-    $('#acuse-mensaje').textContent =
-      `Recibimos tu registro y los papeles de ${n === 1 ? 'tu hijo' : `tus ${n} hijos`}.`;
+    const hijos = n === 1 ? 'tu hijo' : `tus ${n} hijos`;
+
+    $('#acuse-titulo').textContent = aprobada
+      ? 'Tu apoyo quedó aprobado.'
+      : 'Listo. Ya no tienes que hacer nada más.';
+    $('#acuse-mensaje').textContent = aprobada
+      ? `Recursos Humanos revisó los papeles de ${hijos} y los aceptó.`
+      : `Recibimos tu registro y los papeles de ${hijos}.`;
+
     hide($('#acuse-faltantes'));
     hide($('#acuse-consecuencia'));
     hide($('#btn-subir-ahora'));
@@ -545,10 +632,17 @@ function renderAcuse() {
       lista.append(li);
     });
 
+    // Sin fecha de cierre el renglón se oculta en vez de quedarse vacío: un
+    // <div> sin texto dentro del panel deja el gap de 10px de `.panel` y se
+    // lee como un hueco sin causa.
     const cierre = s.programa?.cierre;
-    $('#acuse-deadline').textContent = cierre
-      ? `Tienes hasta el ${formatearFecha(cierre)}.`
-      : '';
+    const deadline = $('#acuse-deadline');
+    if (cierre) {
+      deadline.textContent = `Tienes hasta el ${formatearFecha(cierre)}.`;
+      show(deadline);
+    } else {
+      hide(deadline);
+    }
 
     show($('#acuse-faltantes'));
     show($('#acuse-consecuencia'));
@@ -639,17 +733,74 @@ async function abrirRegreso(token) {
     setView('view-rescate');
     return;
   }
+  mostrarSolicitud();
+}
 
-  if (state.solicitud.completo) {
-    renderAcuse();
-    return;
-  }
+/**
+ * Decide qué pantalla le toca al estado ACTUAL de la solicitud.
+ *
+ * Existe porque antes no existía: cada camino —carga con `?t=`, rescate por
+ * folio, fin de una subida— elegía su vista por su cuenta, y por eso divergían.
+ * El caso que lo destapó: una solicitud RECHAZADA con los papeles completos
+ * entraba por la rama `completo` y le mostraba al trabajador el acuse VERDE
+ * («ya no tienes que hacer nada más») de un apoyo que no va a recibir. El
+ * backend mandaba `estado` y `motivo_rechazo` desde el primer día; nadie los
+ * leía.
+ *
+ * El orden importa: lo que RH decidió pesa más que el conteo de papeles.
+ */
+function mostrarSolicitud() {
+  const s = state.solicitud;
+  if (!s) return;
+  if (s.estado === 'rechazada') renderRechazo();
+  else if (s.completo) renderAcuse();
+  else renderRegreso();
+}
+
+/** Faltan papeles: la lista de lo pendiente, hijo por hijo. */
+function renderRegreso() {
+  const s = state.solicitud;
 
   $('#regreso-titulo').textContent = 'Te faltan papeles';
-  $('#regreso-sub').textContent =
-    `${state.solicitud.nombre} · folio ${state.solicitud.folio}`;
-  renderDocs($('#regreso-lista'));
+  $('#regreso-sub').textContent = `${s.nombre} · folio ${s.folio}`;
+
+  // Pasado el cierre el backend rechaza la subida (`assertProgramaAbierto`),
+  // pero los botones se veían idénticos: el trabajador se enteraba DESPUÉS de
+  // esperar a que subiera la foto, con un snackbar. Se avisa antes.
+  const abierto = programaAbierto();
+  $('#regreso-cerrado').classList.toggle('hidden', abierto);
+  $('#regreso-lista').classList.toggle('hidden', !abierto);
+
+  if (abierto) renderDocs($('#regreso-lista'));
   setView('view-regreso');
+}
+
+/** RH revisó y no aceptó. Con el motivo textual y, si aún hay plazo, la salida. */
+function renderRechazo() {
+  const s = state.solicitud;
+
+  $('#rechazo-folio').textContent = s.folio;
+  $('#rechazo-sub').textContent = `${s.nombre} · folio ${s.folio}`;
+  $('#rechazo-motivo').textContent =
+    s.motivo_rechazo || 'No nos dejaron anotado el motivo. Pregunta en la oficina.';
+
+  // Un rechazo no es el final mientras haya plazo: al volver a tomar la foto,
+  // la nueva reemplaza a la anterior (`upsertDocumento` ya lo soporta). Sin
+  // esta salida, la pantalla sería una puerta cerrada.
+  const abierto = programaAbierto();
+  $('#rechazo-accion').classList.toggle('hidden', !abierto);
+  if (abierto) renderDocs($('#rechazo-lista'));
+
+  setView('view-rechazo');
+}
+
+/**
+ * ¿Sigue abierto el plazo? Se lee del programa que devolvió el backend —la
+ * ventana la evalúa Postgres con `CURRENT_DATE`, nunca el reloj del celular,
+ * que en estos teléfonos puede ir días desfasado.
+ */
+function programaAbierto() {
+  return state.programa?.abierto !== false;
 }
 
 // ============================================================
@@ -681,6 +832,7 @@ async function init() {
   }
 
   montarRescate();
+  montarConsulta();
 
   // El token en la URL ES una credencial explícita: quien abre SU link personal
   // va directo a su trámite. Lo que ya no ocurre es el salto automático por
@@ -773,18 +925,25 @@ function montarFormulario() {
   // los datos ya se enviaron, así que ofrecer volver prometería una edición
   // que no existe. Si se equivocó, RH lo corrige al conciliar.
   $('#btn-enviar').addEventListener('click', renderAcuse);
-  $('#btn-subir-ahora').addEventListener('click', () => {
-    renderDocs($('#regreso-lista'));
-    $('#regreso-titulo').textContent = 'Te faltan papeles';
-    $('#regreso-sub').textContent = `${state.solicitud.nombre} · folio ${state.solicitud.folio}`;
-    setView('view-regreso');
-  });
 
   $('#btn-volver-inicio').addEventListener('click', () => setView('view-inicio'));
 
   $$('#form-datos input, #form-datos select').forEach((el) => {
     el.addEventListener('input', () => limpiarError(el.closest('.field')));
   });
+}
+
+/**
+ * Botones de las pantallas de CONSULTA (acuse y regreso).
+ *
+ * Se montan siempre, no dentro de `montarFormulario`: a esas dos vistas se
+ * llega también por el link `?t=` y por el rescate con folio, caminos donde
+ * `init()` retorna antes de montar el formulario. Vivían ahí y, por esas dos
+ * entradas, sus botones quedaban muertos.
+ */
+function montarConsulta() {
+  $('#btn-subir-ahora').addEventListener('click', renderRegreso);
+  $('#btn-ver-acuse').addEventListener('click', renderAcuse);
 }
 
 function montarRescate() {
