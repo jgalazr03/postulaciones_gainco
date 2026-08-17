@@ -88,6 +88,10 @@ function leerSesion() {
 function setView(id) {
   VISTAS.forEach((v) => hide(document.getElementById(v)));
   show(document.getElementById(id));
+  // El inicio se repinta en CADA entrada: el folio aparece a mitad de la
+  // sesión y ahora se vuelve aquí con el «atrás» del teléfono.
+  if (id === 'view-inicio') pintarInicio();
+  registrarVista(id);
   // Un aviso pertenece a la pantalla donde se produjo. Sin esto, el snackbar
   // del paso 2 («marca la casilla…») seguía flotando encima de la lista de
   // papeles del paso 3, tapándola y hablando de algo que ya no existía.
@@ -96,6 +100,120 @@ function setView(id) {
   // inválido invalida el objeto entero y el scroll no ocurre. `auto` es el
   // mismo comportamiento (salto sin animar) y existe desde siempre.
   window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+// ============================================================
+// Historial — que «atrás» retroceda dentro del trámite
+// ============================================================
+
+/**
+ * El botón físico de «atrás» es EL gesto de Android, y en esta página sacaba
+ * del sitio desde cualquier pantalla. El caso más caro era el rescate por
+ * folio: se llega desde el inicio y no tenía ningún botón de vuelta, así que
+ * quien entraba por error sólo podía salirse.
+ *
+ * Se registra una entrada por VISTA, nunca por paso del formulario. No es una
+ * simplificación: los pasos ya tienen su «Regresar» en pantalla, y meterlos en
+ * el historial abriría el camino de volver a un formulario cuyos datos YA se
+ * enviaron —un segundo «Continuar» crearía una solicitud duplicada que RH
+ * tendría que desenredar a mano—. Desde el formulario, atrás lleva al inicio,
+ * donde además espera «Continuar con mi registro (FOLIO)».
+ *
+ * La primera vista REEMPLAZA la entrada del documento en vez de apilarse: así
+ * «atrás» en la pantalla de aterrizaje sale del sitio, como en cualquier
+ * página. Atrapar a alguien dentro es peor que no manejar el botón.
+ */
+let historialIniciado = false;
+let restaurando = false;
+
+/**
+ * Las vistas que ESTA página apiló, para saber si `history.back()` va a caer
+ * en una pantalla nuestra o va a sacar a la persona del sitio. Usar «atrás»
+ * del navegador a ciegas desde la primera pantalla la echaría fuera.
+ *
+ * Si el usuario usa el «adelante» del navegador la pila se queda corta; la
+ * consecuencia es que un botón «Regresar» pinte la vista en vez de retroceder
+ * en el historial. Se ve igual — sólo deja una entrada de más.
+ */
+const pila = [];
+
+function registrarVista(id) {
+  // Durante un `popstate` el navegador YA movió el historial: volver a
+  // escribirlo lo dejaría desincronizado de lo que se ve.
+  if (restaurando) return;
+  try {
+    const entrada = { vista: id };
+    // Sin URL: el `?t=token` de la barra es la credencial de quien llegó por
+    // su link personal y no se puede perder al navegar.
+    if (!historialIniciado || history.state?.vista === id) {
+      history.replaceState(entrada, '');
+      historialIniciado = true;
+      pila.splice(0, pila.length, id);
+    } else {
+      history.pushState(entrada, '');
+      pila.push(id);
+    }
+  } catch { /* sin History API: se pierde el «atrás», no el trámite */ }
+}
+
+/**
+ * Lo que hace un botón «Regresar» de la pantalla: retroceder de verdad, para
+ * que el botón y el «atrás» del teléfono no dejen historiales distintos. Si no
+ * hay nada nuestro detrás, pinta el destino sin tocar el historial — que es
+ * mejor que echar a la persona fuera del sitio.
+ */
+function volverAtras(destino) {
+  if (pila.length > 1) history.back();
+  else setView(destino);
+}
+
+/** La vista que de verdad está pintada, leída del DOM. */
+function vistaVisible() {
+  return VISTAS.find((v) => !document.getElementById(v)?.classList.contains('hidden')) || null;
+}
+
+/**
+ * Repinta la vista a la que se retrocedió. No basta con `setView`: el acuse,
+ * el regreso y el rechazo componen su contenido a partir del estado actual, y
+ * ese estado pudo cambiar desde que se visitaron (subió un papel, RH lo
+ * rechazó). Se vuelve a derivar en vez de resucitar lo que había.
+ */
+function aplicarVista(id) {
+  if (!state.solicitud) return setView(id);
+
+  // El formulario deja de ser un destino en cuanto la solicitud existe.
+  if (id === 'view-form' && state.paso < 3) return mostrarSolicitud();
+
+  if (id === 'view-acuse') return renderAcuse();
+  if (id === 'view-regreso') return renderRegreso();
+  if (id === 'view-rechazo') return renderRechazo();
+  return setView(id);
+}
+
+function montarHistorial() {
+  window.addEventListener('popstate', (evento) => {
+    const destino = evento.state?.vista;
+    if (!destino) return;
+
+    if (pila.length > 1) pila.pop();
+
+    restaurando = true;
+    try {
+      aplicarVista(destino);
+    } finally {
+      restaurando = false;
+    }
+
+    // Si `aplicarVista` derivó a otra pantalla —el formulario caducado, o un
+    // rechazo que llegó mientras tanto—, la entrada del historial se corrige
+    // para que siga describiendo lo que se ve. Sin esto, el siguiente «atrás»
+    // parecería no hacer nada.
+    const real = vistaVisible();
+    if (real && real !== destino) {
+      try { history.replaceState({ vista: real }, ''); } catch { /* noop */ }
+      if (pila.length) pila[pila.length - 1] = real;
+    }
+  });
 }
 
 let snackTimer = null;
@@ -1097,6 +1215,7 @@ async function init() {
   montarRescate();
   montarConsulta();
   montarCerrado();
+  montarHistorial();
 
   // El token en la URL ES una credencial explícita: quien abre SU link personal
   // va directo a su trámite. Lo que ya no ocurre es el salto automático por
@@ -1159,8 +1278,23 @@ function montarCerrado() {
  * de aterrizar en un formulario largo: es una sola decisión, y hace visible el
  * regreso, que antes vivía escondido al final del paso 1.
  */
-function montarInicio() {
+/**
+ * Estado de la bifurcación de inicio, según si ESTE teléfono ya tiene un
+ * registro. Va aparte de `montarInicio` porque el folio aparece a mitad de la
+ * sesión —en cuanto se crea la solicitud— y a esta pantalla se vuelve: con el
+ * pintado dentro del montaje, quien terminaba el alta y regresaba al inicio se
+ * encontraba el botón genérico «Ya me registré», sin su folio, como si no
+ * hubiera pasado nada.
+ *
+ * Idempotente y simétrica en las dos ramas: se llama en cada entrada a la
+ * vista, y una rama que sólo supiera poner y no quitar dejaría el botón
+ * mintiendo si la sesión se borra.
+ */
+function pintarInicio() {
   const { folio } = leerSesion();
+  const continuar = $('#btn-ya-registrado');
+  const registrarse = $('#btn-registrarme');
+  if (!continuar || !registrarse) return;
 
   // Si este teléfono ya tiene un registro, el segundo botón deja de ser una
   // pregunta y pasa a nombrarlo. Y aparece la salida para quien NO es esa
@@ -1174,18 +1308,30 @@ function montarInicio() {
   // decisión: siguen siendo dos caminos explícitos y nadie es redirigido
   // solo — en planta se presta el celular.
   if (folio) {
-    const continuar = $('#btn-ya-registrado');
-    const registrarse = $('#btn-registrarme');
-
     continuar.textContent = `Continuar con mi registro (${folio})`;
-    continuar.classList.replace('btn-outlined', 'btn-filled');
-    continuar.classList.add('is-first');
+    continuar.classList.remove('btn-outlined');
+    continuar.classList.add('btn-filled', 'is-first');
 
     registrarse.textContent = 'Registrarme (soy otra persona)';
-    registrarse.classList.replace('btn-filled', 'btn-outlined');
+    registrarse.classList.remove('btn-filled');
+    registrarse.classList.add('btn-outlined');
 
     show($('#btn-otro-registro'));
+  } else {
+    continuar.textContent = 'Ya me registré, me falta subir papeles';
+    continuar.classList.remove('btn-filled', 'is-first');
+    continuar.classList.add('btn-outlined');
+
+    registrarse.textContent = 'Registrarme';
+    registrarse.classList.remove('btn-outlined');
+    registrarse.classList.add('btn-filled');
+
+    hide($('#btn-otro-registro'));
   }
+}
+
+function montarInicio() {
+  pintarInicio();
 
   $('#btn-registrarme').addEventListener('click', () => {
     irAPaso(1);
@@ -1247,7 +1393,10 @@ function montarFormulario() {
   // que no existe. Si se equivocó, RH lo corrige al conciliar.
   $('#btn-enviar').addEventListener('click', renderAcuse);
 
-  $('#btn-volver-inicio').addEventListener('click', () => setView('view-inicio'));
+  // Retrocede de verdad en vez de apilar otra entrada: si no, «Regresar» y el
+  // «atrás» del teléfono dejarían historiales distintos y volver dos veces
+  // acabaría trayendo de nuevo el formulario que se acaba de abandonar.
+  $('#btn-volver-inicio').addEventListener('click', () => volverAtras('view-inicio'));
 
   $$('#form-datos input, #form-datos select').forEach((el) => {
     el.addEventListener('input', () => limpiarError(el.closest('.field')));
