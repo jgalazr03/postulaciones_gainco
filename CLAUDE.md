@@ -9,6 +9,8 @@ Sitio público de GAINCO. **Vanilla JavaScript + Vite + Tailwind CSS v4** (sin f
 | `index.html` | `empleos.gainco.mx` | Candidato externo | ⏸️ **En pausa** (`POSTULACIONES_PAUSADAS`) |
 | `apoyo-escolar.html` | `empleos.gainco.mx/apoyo-escolar` | **Trabajador ya contratado** | ✅ Activa |
 
+> ⚠️ **El nombre que ve el trabajador es «Apoyo para estudios»**, no «apoyo de útiles escolares» (backend mig. 180): con dinero de por medio, amarrarlo a «útiles» prometía menos de lo que el apoyo es. En el código, los archivos, la ruta `/apoyo-escolar` y la clave `escolar_2026_2027` **siguen llamándose así a propósito** — son identidad, no etiqueta, y renombrarlos rompería enlaces ya emitidos. Si encuentras «útiles escolares» en un texto VISIBLE, es un resto: quítalo. Este documento sigue diciendo «apoyo escolar» para referirse al módulo.
+
 El formulario de postulación es el primer punto de contacto del candidato y alimenta el funnel que continúa en `rh-worker-management-frontend`. El registro de apoyo escolar es un trámite interno de RH que casualmente vive aquí: es la única superficie pública del suite, y montarlo aquí evita un repo y un deploy nuevos.
 
 > ⚠️ **Dos sistemas de diseño coexisten en este repo, a propósito.** No unificarlos sin leer la sección "Dos sistemas de diseño".

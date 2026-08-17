@@ -1,5 +1,5 @@
 /**
- * Apoyo de útiles escolares — registro público.
+ * Apoyo para estudios — registro público.
  *
  * Vanilla JS, sin framework (convención del repo). Tres pasos, acuse, y una
  * pantalla de regreso para quien vuelve a completar sus papeles.
