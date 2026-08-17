@@ -289,6 +289,28 @@ img, svg { display: block; max-width: 100%; }
 }
 .field > input::placeholder { color: var(--md-on-surface-variant); opacity: 1; }
 
+/* `input[type="date"]` se sale de su caja en móvil, y sólo ahí.
+   WebKit —Safari de iOS, y por herencia el Chrome de iOS— le da un ancho
+   INTRÍNSECO calculado a partir del formato de fecha del sistema y lo trata
+   como inline-block: `width: 100%` no lo encoge por debajo de ese ancho, así
+   que con los 32px de padding el campo desborda la tarjeta del hijo y arrastra
+   la página entera en horizontal. En el Chromium y el WebKit de escritorio NO
+   se reproduce (medido: 294px de input en 294px de campo, sin scroll), que es
+   por lo que sobrevivió a todas las capturas.
+   Las tres declaraciones atacan la misma causa desde sus tres lados:
+   `appearance:none` quita el widget nativo que impone ese ancho, `min-width:0`
+   permite encoger por debajo del contenido, y `max-width:100%` es el tope duro
+   por si algo se escapa. El ícono del calendario NO se pierde: vive en
+   `::-webkit-calendar-picker-indicator`, que sobrevive a `appearance:none`. */
+.field > input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  /* Sin esto, iOS ignora la altura del campo y centra el texto arriba. */
+  display: block;
+}
+
 /* La etiqueta va SOBRE el borde y se recorta con el fondo (el «notch» de M3).
    Como el campo puede vivir sobre `surface` o sobre una tarjeta, el color de
    recorte es una variable que la tarjeta sobreescribe. */

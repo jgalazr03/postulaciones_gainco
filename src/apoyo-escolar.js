@@ -36,7 +36,7 @@ const state = {
   catalogo: { clientes: [], ciudades: [] },
   paso: 1,
   datos: {
-    nombre: '', numero_acceso: '', telefono: '', cliente_id: '', ciudad: '',
+    nombre: '', numero_acceso: '', telefono: '', planta: '', ciudad: '',
     correo: '',
     // '' | 'si' | 'no'. El vacío es «todavía no contesta», y no es lo mismo que
     // «no tiene»: sin distinguirlos, la pantalla arrancaría afirmando por él.
@@ -358,14 +358,15 @@ const limpiarBorrador = () => { try { localStorage.removeItem(BORRADOR_KEY); } c
 // ============================================================
 
 function pintarCatalogo() {
-  const selCliente = $('#cliente_id');
+  const listaPlantas = $('#plantas-sugeridas');
   const selCiudad = $('#ciudad');
 
+  // Sugerencias, no opciones cerradas: el campo es texto libre porque hay
+  // plantas fuera del catálogo (mig. 182).
   state.catalogo.clientes.forEach((c) => {
     const op = document.createElement('option');
-    op.value = c.id;
-    op.textContent = c.nombre;
-    selCliente.append(op);
+    op.value = c.nombre;
+    listaPlantas.append(op);
   });
 
   state.catalogo.ciudades.forEach((nombre) => {
@@ -375,7 +376,7 @@ function pintarCatalogo() {
     selCiudad.append(op);
   });
 
-  selCliente.value = state.datos.cliente_id || '';
+  $('#planta').value = state.datos.planta || '';
   selCiudad.value = state.datos.ciudad || '';
   $('#nombre').value = state.datos.nombre || '';
   $('#numero_acceso').value = state.datos.numero_acceso || '';
@@ -431,12 +432,29 @@ function pintarConteoClabe() {
   }
 }
 
+/**
+ * `cliente_id` del catálogo si lo que escribió coincide con una planta conocida.
+ *
+ * La comparación ignora mayúsculas, acentos y espacios de sobra: quien escribe
+ * «nemak» o «NEMAK » se refiere al mismo sitio que quien eligió la sugerencia,
+ * y perder el `cliente_id` por una tilde obligaría a RH a conciliar a mano algo
+ * que el sistema ya sabía.
+ */
+function clienteIdDeLaPlanta(texto) {
+  if (!texto) return null;
+  const normaliza = (s) => s.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+  const buscado = normaliza(texto);
+  return state.catalogo.clientes.find((c) => normaliza(c.nombre) === buscado)?.id || null;
+}
+
 function leerPaso1() {
   state.datos = {
     nombre: $('#nombre').value.trim(),
     numero_acceso: $('#numero_acceso').value.trim(),
     telefono: $('#telefono').value.trim(),
-    cliente_id: $('#cliente_id').value,
+    planta: $('#planta').value.trim(),
     ciudad: $('#ciudad').value,
     correo: $('#correo').value.trim(),
     tarjeta: $('input[name="tarjeta"]:checked')?.value || '',
@@ -450,7 +468,7 @@ function validarPaso1() {
   leerPaso1();
   let ok = true;
   const {
-    nombre, numero_acceso: acceso, telefono, cliente_id: cliente, ciudad,
+    nombre, telefono, planta, ciudad,
     correo, tarjeta, clabe,
   } = state.datos;
 
@@ -467,18 +485,16 @@ function validarPaso1() {
     marcarError($('#f-nombre'), 'Escribe tu nombre completo.');
     ok = false;
   }
-  if (!acceso) {
-    // No es opcional en la práctica: es lo que le permite a RH encontrarte en
-    // la nómina, porque el formulario no consulta la base de datos.
-    marcarError($('#f-acceso'), 'Necesitamos tu número de gafete para encontrarte.');
-    ok = false;
-  }
+  // El número de acceso NO se valida: es opcional desde la mig. 182 porque no
+  // todas las plantas lo manejan. Con él, RH concilia más rápido; sin él,
+  // concilia por nombre, teléfono y planta. El teléfono carga ahora el peso de
+  // ser la llave de vuelta, así que es el único de los tres que no perdona.
   const digitos = telefono.replace(/\D/g, '');
   if (digitos.length < 10) {
     marcarError($('#f-telefono'), 'Escribe los 10 dígitos de tu celular.');
     ok = false;
   }
-  if (!cliente) { marcarError($('#f-planta'), 'Selecciona tu planta.'); ok = false; }
+  if (!planta) { marcarError($('#f-planta'), 'Escribe en qué planta trabajas.'); ok = false; }
   if (!ciudad) { marcarError($('#f-ciudad'), 'Selecciona tu ciudad.'); ok = false; }
 
   // El correo es obligatorio desde que el apoyo se paga por transferencia. La
@@ -634,7 +650,12 @@ async function crearSolicitud(botón) {
         nombre: state.datos.nombre,
         numero_acceso: state.datos.numero_acceso,
         telefono: state.datos.telefono,
-        cliente_id: state.datos.cliente_id || null,
+        // La planta viaja SIEMPRE como texto, y el `cliente_id` sólo si lo que
+        // escribió coincide con uno del catálogo. Así el dato estructurado no
+        // se pierde donde existe, y quien trabaja en una planta que no está en
+        // la lista igual se registra (mig. 182).
+        planta: state.datos.planta || null,
+        cliente_id: clienteIdDeLaPlanta(state.datos.planta),
         ciudad: state.datos.ciudad || null,
         correo: state.datos.correo,
         tiene_tarjeta_gainco: state.datos.tarjeta === 'si',
@@ -1598,16 +1619,20 @@ function montarRescate() {
     e.preventDefault();
     const folio = $('#folio').value.trim().toUpperCase();
     const acceso = $('#acceso_rescate').value.trim();
+    const tel = $('#telefono_rescate').value.trim();
 
     limpiarError($('#f-folio'));
     limpiarError($('#f-acceso-rescate'));
+    limpiarError($('#f-telefono-rescate'));
 
     if (folio.length !== 5) {
       marcarError($('#f-folio'), 'El folio tiene 5 caracteres.');
       return;
     }
-    if (!acceso) {
-      marcarError($('#f-acceso-rescate'), 'Escribe tu número de gafete.');
+    // Basta con UNA de las dos llaves (mig. 182). El error se pinta en el
+    // teléfono, no en el gafete: es el campo que todo el mundo puede llenar.
+    if (!acceso && !tel) {
+      marcarError($('#f-telefono-rescate'), 'Escribe tu teléfono o tu número de gafete.');
       return;
     }
 
@@ -1617,7 +1642,8 @@ function montarRescate() {
 
     try {
       const data = await api('/api/public/apoyos/rescate', {
-        method: 'POST', body: { folio, numero_acceso: acceso },
+        method: 'POST',
+        body: { folio, numero_acceso: acceso || null, telefono: tel || null },
       });
       state.token = data.token;
       state.solicitud = data;

@@ -169,8 +169,12 @@
             <div class="field" id="f-acceso">
               <input type="text" id="numero_acceso" name="numero_acceso"
                      inputmode="numeric" maxlength="20" placeholder=" " enterkeyhint="next" />
-              <label class="field-label" for="numero_acceso">Número de acceso</label>
-              <p class="field-support">Es el número que trae tu gafete.</p>
+              <label class="field-label" for="numero_acceso">Número de acceso (si tienes)</label>
+              <!-- OPCIONAL desde la mig. 182: no todas las plantas lo manejan, y
+                   exigirlo obligaba a inventarlo o a abandonar. La etiqueta lo
+                   dice —«si tienes»—, no la ayuda: quien no lo tiene se detiene
+                   en el campo, no en el texto chico de abajo. -->
+              <p class="field-support">Es el número que trae tu gafete. Déjalo vacío si en tu planta no lo usan.</p>
             </div>
 
             <div class="field" id="f-telefono">
@@ -180,15 +184,18 @@
               <p class="field-support">10 dígitos, para buscarte si falta algo.</p>
             </div>
 
+            <!-- TEXTO LIBRE con sugerencias, no un `<select>` cerrado (mig.
+                 182): quien trabaja en una planta que no está en el catálogo no
+                 podía registrarse. El `<datalist>` conserva la comodidad de
+                 elegir de una lista, y si lo que escribe coincide con un
+                 cliente conocido el JS manda además su `cliente_id`, así que el
+                 dato estructurado no se pierde donde sí existe. -->
             <div class="field" id="f-planta">
-              <select id="cliente_id" name="cliente_id">
-                <option value="">Selecciona…</option>
-              </select>
-              <label class="field-label" for="cliente_id">¿En qué planta trabajas?</label>
-              <span class="field-chevron" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </span>
-              <p class="field-support"></p>
+              <input type="text" id="planta" name="planta" list="plantas-sugeridas"
+                     autocomplete="off" maxlength="120" placeholder=" " enterkeyhint="next" />
+              <label class="field-label" for="planta">¿En qué planta trabajas?</label>
+              <datalist id="plantas-sugeridas"></datalist>
+              <p class="field-support">Escríbela como la conoces.</p>
             </div>
 
             <div class="field" id="f-ciudad">
@@ -489,7 +496,7 @@
       <!-- ══ RESCATE (perdí mi link) ══════════════════════ -->
       <section id="view-rescate" class="hidden">
         <h1 class="headline">Busca tu registro</h1>
-        <p class="body-sm">Escribe tu folio y tu número de acceso.</p>
+        <p class="body-sm">Escribe tu folio y tu teléfono o tu número de acceso.</p>
 
         <form id="form-rescate" class="stack" novalidate>
           <div class="field" id="f-folio">
@@ -499,10 +506,24 @@
             <p class="field-support">Son 5 caracteres, como 7K4M2.</p>
           </div>
 
+          <!-- Dos llaves, no una. El gafete dejó de ser obligatorio en el alta
+               (mig. 182) y era la mitad de la credencial de vuelta: quien no lo
+               tiene se habría quedado sin forma de recuperar su registro. El
+               teléfono SÍ es obligatorio al registrarse, así que todo el mundo
+               conserva una. Basta con llenar uno de los dos. -->
+          <div class="field" id="f-telefono-rescate">
+            <input type="tel" id="telefono_rescate" maxlength="20" inputmode="tel"
+                   autocomplete="tel" placeholder=" " />
+            <label class="field-label" for="telefono_rescate">Tu teléfono</label>
+            <p class="field-support">El mismo que registraste.</p>
+          </div>
+
+          <p class="body-sm" style="text-align:center;margin:0">o</p>
+
           <div class="field" id="f-acceso-rescate">
             <input type="text" id="acceso_rescate" maxlength="20" inputmode="numeric" placeholder=" " />
             <label class="field-label" for="acceso_rescate">Número de acceso</label>
-            <p class="field-support"></p>
+            <p class="field-support">Si en tu planta lo usan.</p>
           </div>
 
           <button type="submit" class="btn btn-filled">Buscar mi registro</button>
