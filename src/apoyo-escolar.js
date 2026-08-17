@@ -158,13 +158,17 @@ function registrarVista(id) {
 
 /**
  * Lo que hace un botón «Regresar» de la pantalla: retroceder de verdad, para
- * que el botón y el «atrás» del teléfono no dejen historiales distintos. Si no
- * hay nada nuestro detrás, pinta el destino sin tocar el historial — que es
- * mejor que echar a la persona fuera del sitio.
+ * que el botón y el «atrás» del teléfono no dejen historiales distintos.
+ *
+ * Si no hay nada nuestro detrás —el caso de quien abre `?rescate=1` directo—
+ * se ejecuta el `respaldo`, que es una FUNCIÓN y no un id de vista: el destino
+ * puede necesitar prepararse (montar el alta) o cambiar por completo (con el
+ * plazo cerrado, el inicio no es un destino válido). Pintar la vista a secas
+ * dejaba botones sin listeners.
  */
-function volverAtras(destino) {
+function volverAtras(respaldo) {
   if (pila.length > 1) history.back();
-  else setView(destino);
+  else respaldo();
 }
 
 /** La vista que de verdad está pintada, leída del DOM. */
@@ -1232,17 +1236,43 @@ async function init() {
     return;
   }
 
-  if (!state.programa.abierto) {
-    mostrarCerrado();
-    return;
-  }
+  irAlInicio();
+}
 
+/**
+ * Deja el alta lista para usarse: catálogo pintado, borrador restaurado,
+ * listeners montados.
+ *
+ * Se separó de `init()` porque ahora se puede LLEGAR al inicio, no sólo
+ * arrancar en él: desde «Regresar» del rescate y desde el «atrás» del teléfono.
+ * Con la preparación enterrada en el camino de arranque, quien entraba por
+ * `?rescate=1` —que corta antes— y volvía al inicio se encontraba unos botones
+ * sin listeners y, si llegaba al formulario, los selectores de planta y ciudad
+ * vacíos. Idempotente: llegar dos veces al inicio no duplica los listeners.
+ */
+let altaPreparada = false;
+function prepararAlta() {
+  if (altaPreparada || !programaAbierto()) return;
+  altaPreparada = true;
   cargarBorrador();
   pintarCatalogo();
   renderHijos();
   recordarAyudas();
   montarFormulario();
   montarInicio();
+}
+
+/**
+ * La puerta de entrada, venga de donde venga. Con el plazo cerrado el inicio
+ * no es un destino válido —ofrecería registrarse a quien ya no puede—, así que
+ * la misma llamada lleva a la pantalla de cierre, que sí tiene salidas.
+ */
+function irAlInicio() {
+  if (!programaAbierto()) {
+    mostrarCerrado();
+    return;
+  }
+  prepararAlta();
   setView('view-inicio');
 }
 
@@ -1396,7 +1426,7 @@ function montarFormulario() {
   // Retrocede de verdad en vez de apilar otra entrada: si no, «Regresar» y el
   // «atrás» del teléfono dejarían historiales distintos y volver dos veces
   // acabaría trayendo de nuevo el formulario que se acaba de abandonar.
-  $('#btn-volver-inicio').addEventListener('click', () => volverAtras('view-inicio'));
+  $('#btn-volver-inicio').addEventListener('click', () => volverAtras(irAlInicio));
 
   $$('#form-datos input, #form-datos select').forEach((el) => {
     el.addEventListener('input', () => limpiarError(el.closest('.field')));
@@ -1434,6 +1464,8 @@ function montarRescate() {
   const form = $('#form-rescate');
   if (!form || form.dataset.montado) return;
   form.dataset.montado = '1';
+
+  $('#btn-volver-rescate')?.addEventListener('click', () => volverAtras(irAlInicio));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

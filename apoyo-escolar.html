@@ -412,6 +412,16 @@
           </div>
 
           <button type="submit" class="btn btn-filled">Buscar mi registro</button>
+
+          <!-- Esta pantalla era la única sin salida visible: se llega desde el
+               inicio y sólo se podía salir con el «atrás» del sistema. Confiar
+               en ese gesto aquí no vale — en iOS la barra se esconde al hacer
+               scroll, el link suele abrirse dentro de WhatsApp, y quien no
+               domina un celular no lo usa. Y quien entra directo por
+               `?rescate=1` no tiene ni historial detrás. -->
+          <button type="button" class="btn btn-text" id="btn-volver-rescate">
+            Regresar
+          </button>
         </form>
       </section>
 
