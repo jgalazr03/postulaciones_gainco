@@ -302,10 +302,20 @@
                volver a tomar la foto, la nueva reemplaza a la anterior. -->
           <div class="stack hidden" id="rechazo-accion">
             <p class="body-sm" id="rechazo-instruccion">
-              Vuelve a tomar la foto del papel que te indican. La nueva sustituye
-              a la que enviaste antes.
+              Vuelve a mandar sólo el papel marcado en rojo. Puedes tomarle
+              foto o escogerla de tu galería.
             </p>
             <div id="rechazo-lista" class="stack" data-docs-lista="rechazo"></div>
+
+            <!-- El reenvío es un botón, no un efecto de subir el archivo:
+                 quien tiene dos hijos sube de a uno y a ratos, y sin un aviso
+                 deliberado RH revisaría un expediente a medio corregir y lo
+                 rechazaría otra vez. Se habilita sólo cuando ya no queda nada
+                 en rojo — el backend aplica la misma regla. -->
+            <button type="button" class="btn btn-filled" id="btn-reenviar" disabled>
+              Ya lo corregí, enviar de nuevo
+            </button>
+            <p class="body-sm" id="reenviar-ayuda"></p>
           </div>
 
           <p class="body-sm" id="rechazo-oficina">
@@ -416,7 +426,12 @@
         <b data-etiqueta></b>
         <span data-ayuda></span>
       </span>
-      <input type="file" class="sr-only" accept="image/*,application/pdf" capture="environment" data-input />
+      <!-- SIN `capture`: ese atributo abre la cámara DIRECTO y deja fuera el
+           carrete, y lo normal aquí es que el acta ya esté en el teléfono
+           —se la mandaron por WhatsApp, o la fotografió otro día—. Sin él,
+           Android ofrece cámara, galería y archivos, que es justo la
+           decisión que el trabajador necesita tomar. -->
+      <input type="file" class="sr-only" accept="image/*,application/pdf" data-input />
     </label>
   </template>
 

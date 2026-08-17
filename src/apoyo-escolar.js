@@ -467,11 +467,13 @@ async function subirDocumento(file, tipo, beneficiarioId, uploadEl) {
       // justo cuando todavía puede subir el papel del siguiente hijo.
       renderDocs(contenedor);
     } else {
-      // Subir no des-rechaza: el estado lo cambia RH, así que la pantalla
-      // vuelve a ser la del rechazo. Sin este aviso, reenviar la foto se
-      // sentiría como que no pasó nada.
+      // Subir NO des-rechaza: eso lo hace el botón «enviar de nuevo», y a
+      // propósito. Aquí sólo se confirma que el archivo llegó y se recuerda
+      // que falta el aviso, que es el paso que la gente olvida.
       if (contexto === 'rechazo') {
-        snackbar('Recibimos tu foto nueva. Recursos Humanos la va a revisar otra vez.');
+        snackbar(state.solicitud.puede_reenviar
+          ? 'Guardada. Ya sólo falta tocar «Ya lo corregí, enviar de nuevo».'
+          : 'Guardada. Todavía te falta cambiar otro papel.');
       }
       mostrarSolicitud();
     }
@@ -505,6 +507,9 @@ function renderDocs(contenedor) {
   const faltantesPorHijo = new Map(
     (state.solicitud.faltantes || []).map((f) => [f.beneficiario_id, f.tipos]),
   );
+  const rechazadosPorHijo = new Map(
+    (state.solicitud.rechazados || []).map((r) => [r.beneficiario_id, r.tipos]),
+  );
 
   state.solicitud.beneficiarios.forEach((b) => {
     const nodo = $('#tpl-docs-hijo').content.cloneNode(true);
@@ -512,48 +517,57 @@ function renderDocs(contenedor) {
     $('[data-nombre]', card).textContent = b.nombre;
 
     const faltan = faltantesPorHijo.get(b.id) || [];
+    const rechazados = rechazadosPorHijo.get(b.id) || [];
     const chip = $('[data-faltan]', card);
-    // El hijo que ya está completo lo dice, no sólo deja de quejarse: con
-    // varios hijos, la ausencia de aviso se confunde con «todavía no lo he
-    // revisado». Es el mismo criterio del acuse — el verde se gana.
-    //
-    // Salvo en la pantalla de rechazo: ahí «Completo» sería un desmentido del
-    // párrafo de arriba, donde RH explica que los papeles no sirvieron. Tener
-    // los archivos y que valgan son dos cosas distintas.
-    if (faltan.length) {
+
+    // Tres estados y no dos, en este orden de urgencia: lo rechazado pesa más
+    // que lo que falta —ya hubo un viaje en balde— y ambos pesan más que el
+    // «Completo», que sólo se gana cuando no queda ninguno de los dos.
+    chip.classList.remove('chip-warn', 'chip-ok', 'chip-error');
+    if (rechazados.length) {
+      chip.textContent = rechazados.length === 1 ? 'Revisa 1' : `Revisa ${rechazados.length}`;
+      chip.classList.add('chip-error');
+      show(chip);
+    } else if (faltan.length) {
       chip.textContent = faltan.length === 1 ? 'Falta 1' : `Faltan ${faltan.length}`;
       chip.classList.add('chip-warn');
-      chip.classList.remove('chip-ok');
       show(chip);
-    } else if (contexto !== 'rechazo') {
+    } else {
       chip.textContent = 'Completo';
       chip.classList.add('chip-ok');
-      chip.classList.remove('chip-warn');
       show(chip);
     }
 
     const slots = $('[data-slots]', card);
-    const entregados = new Set((b.documentos || []).map((d) => d.tipo));
+    const porTipo = new Map((b.documentos || []).map((d) => [d.tipo, d]));
 
     requeridos().forEach((req) => {
       const fila = $('#tpl-upload').content.cloneNode(true);
       const label = $('[data-upload]', fila);
       const input = $('[data-input]', fila);
+      const doc = porTipo.get(req.tipo);
 
       $('[data-etiqueta]', label).textContent = req.etiqueta || req.tipo;
 
-      if (entregados.has(req.tipo)) {
-        // En la pantalla de rechazo el papel está entregado pero NO aprobado:
-        // pintarlo verde diría «esto ya quedó» justo debajo del texto donde RH
-        // explica que no sirve. Se muestra neutro, y sigue siendo reemplazable.
-        const rechazado = contexto === 'rechazo';
-        label.classList.add(rechazado ? 'is-sent' : 'is-done');
-        $('[data-ayuda]', label).textContent = rechazado
-          ? 'Ya la mandaste · toca para cambiarla'
+      if (doc && doc.estado === 'rechazado') {
+        // ROJO, y sólo este. El color señala el archivo exacto que hay que
+        // volver a tomar; el texto es el motivo que escribió RH, que es lo
+        // único que le dice qué está mal.
+        label.classList.add('is-rejected');
+        $('[data-ayuda]', label).textContent =
+          doc.motivo || 'No nos sirvió. Toca para mandar otra.';
+        $('[data-avatar]', label).innerHTML =
+          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"/><circle cx="12" cy="16.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/></svg>';
+      } else if (doc) {
+        // Verde: de su lado ya quedó. Da igual si RH todavía no la revisa —
+        // «pendiente» es trabajo de la oficina, no del trabajador, y pintarlo
+        // de otro color le pediría una acción que no existe.
+        label.classList.add('is-done');
+        $('[data-ayuda]', label).textContent = doc.subido_por_rh
+          ? 'La subió Recursos Humanos · toca para cambiarla'
           : 'Ya la recibimos · toca para cambiarla';
-        $('[data-avatar]', label).innerHTML = rechazado
-          ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.4"/></svg>'
-          : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+        $('[data-avatar]', label).innerHTML =
+          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
       } else {
         // `is-missing` (ámbar) existía en la hoja de estilos desde el primer
         // día y ningún camino lo aplicaba: un papel pendiente se veía igual
@@ -781,17 +795,57 @@ function renderRechazo() {
 
   $('#rechazo-folio').textContent = s.folio;
   $('#rechazo-sub').textContent = `${s.nombre} · folio ${s.folio}`;
-  $('#rechazo-motivo').textContent =
-    s.motivo_rechazo || 'No nos dejaron anotado el motivo. Pregunta en la oficina.';
+
+  // El panel de arriba resume; el detalle de QUÉ papel está mal vive pegado a
+  // cada renglón rojo de abajo, que es donde el trabajador va a actuar.
+  const cuantos = (s.rechazados || []).reduce((n, r) => n + r.tipos.length, 0);
+  $('#rechazo-motivo').textContent = s.motivo_rechazo
+    || (cuantos === 1
+      ? 'Hay un papel que no nos sirvió. Abajo te decimos cuál.'
+      : `Hay ${cuantos} papeles que no nos sirvieron. Abajo te decimos cuáles.`);
 
   // Un rechazo no es el final mientras haya plazo: al volver a tomar la foto,
   // la nueva reemplaza a la anterior (`upsertDocumento` ya lo soporta). Sin
   // esta salida, la pantalla sería una puerta cerrada.
   const abierto = programaAbierto();
   $('#rechazo-accion').classList.toggle('hidden', !abierto);
-  if (abierto) renderDocs($('#rechazo-lista'));
+
+  if (abierto) {
+    renderDocs($('#rechazo-lista'));
+
+    // `puede_reenviar` lo decide el backend con la misma regla que aplica al
+    // recibir el reenvío: tenerla en dos sitios es garantizar que se separen.
+    const listo = Boolean(s.puede_reenviar);
+    $('#btn-reenviar').disabled = !listo;
+    $('#reenviar-ayuda').textContent = listo
+      ? 'Recursos Humanos lo va a revisar otra vez.'
+      : 'El botón se activa cuando ya no quede nada marcado en rojo.';
+  }
 
   setView('view-rechazo');
+}
+
+/**
+ * Avisa a RH que ya quedó. Explícito y con confirmación en pantalla: para el
+ * trabajador, este botón es el equivalente a entregar los papeles en la
+ * ventanilla, y necesita ver que se recibieron.
+ */
+async function reenviar(botón) {
+  const textoOriginal = botón.textContent;
+  botón.disabled = true;
+  botón.textContent = 'Enviando…';
+
+  try {
+    state.solicitud = await api(`/api/public/apoyos/solicitudes/${state.token}/reenviar`, {
+      method: 'POST',
+    });
+    snackbar('Listo. Recursos Humanos va a revisar tus papeles otra vez.');
+    mostrarSolicitud();
+  } catch (err) {
+    snackbar(err.message);
+    botón.disabled = false;
+    botón.textContent = textoOriginal;
+  }
 }
 
 /**
@@ -944,6 +998,7 @@ function montarFormulario() {
 function montarConsulta() {
   $('#btn-subir-ahora').addEventListener('click', renderRegreso);
   $('#btn-ver-acuse').addEventListener('click', renderAcuse);
+  $('#btn-reenviar').addEventListener('click', (e) => reenviar(e.currentTarget));
 }
 
 function montarRescate() {

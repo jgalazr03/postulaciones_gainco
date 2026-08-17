@@ -448,21 +448,22 @@ img, svg { display: block; max-width: 100%; }
 .upload.is-missing .upload-avatar { background: var(--md-warning); color: #fff; }
 .upload.is-missing .upload-text span { color: var(--md-on-warning-container); opacity: 0.85; }
 
-/* Entregado pero SIN dar por bueno.
-   Es la variante de la pantalla de rechazo: ahí el verde mentiría, porque RH
-   acaba de decir que ese papel no sirve. El documento está —se puede
-   reemplazar— pero no está aprobado, y el color no puede afirmar lo contrario.
-   La regla de la suite es «un estado, un significado»; verde ya significa
-   «esto ya quedó». */
-.upload.is-sent {
-  border-color: var(--md-outline-variant);
-  background: var(--md-surface-container);
-  color: var(--md-on-surface-variant);
+/* El papel que RH marcó como que NO sirve.
+   Rojo y sólo él: cuando el rechazo era de toda la solicitud, el trabajador
+   tenía que adivinar cuál de sus cuatro archivos rehacer, y lo normal era que
+   remandara todos. Aquí el color señala exactamente el que hay que volver a
+   tomar, y el texto de abajo es el motivo que escribió RH. */
+.upload.is-rejected {
+  border-color: var(--md-error);
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
 }
-.upload.is-sent .upload-avatar {
-  background: var(--md-surface-highest);
-  color: var(--md-on-surface-variant);
-}
+.upload.is-rejected .upload-avatar { background: var(--md-error); color: #fff; }
+.upload.is-rejected .upload-text span { color: var(--md-on-error-container); opacity: 1; }
+
+/* El motivo puede ser una frase larga y es lo único accionable de la pantalla:
+   no se recorta ni se aprieta a 12px como el texto de ayuda normal. */
+.upload.is-rejected .upload-text span { font-size: 13px; line-height: 18px; }
 
 .upload.is-busy { opacity: 0.6; pointer-events: none; }
 
@@ -582,6 +583,7 @@ img, svg { display: block; max-width: 100%; }
 .chip-neutral { background: var(--md-surface-highest); color: var(--md-on-surface-variant); }
 .chip-warn { background: var(--md-warning-container); color: var(--md-on-warning-container); }
 .chip-ok { background: var(--md-success-container); color: var(--md-on-success-container); }
+.chip-error { background: var(--md-error-container); color: var(--md-on-error-container); }
 
 /* ============================================================
    Snackbar M3 — errores globales
